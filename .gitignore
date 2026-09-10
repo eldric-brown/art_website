@@ -1,0 +1,29 @@
+# Node
+node_modules/
+package.json
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Cloudflare
+.wrangler/
+.dev.vars
+.env
+.env.*
+
+# 本地生成物
+dist/
+build/
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 本地预览用占位图片（真实图片走 R2）
+public/uploads/

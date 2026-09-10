@@ -1,0 +1,40 @@
+{
+  // Cloudflare Pages 项目配置
+  // 参考：https://developers.cloudflare.com/pages/functions/bindings/
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "art-website",
+  "pages_build_output_dir": ".",
+  "compatibility_date": "2025-09-01",
+
+  // 数据库绑定：D1
+  // 变量名 "DB" 会在函数里通过 context.env.DB 访问
+  // 需要先在 Cloudflare Dashboard 创建 D1 数据库，再把 database_id 填进来
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "art-website-db",
+      "database_id": "<REPLACE_WITH_YOUR_D1_DATABASE_ID>"
+    }
+  ],
+
+  // 对象存储绑定：R2
+  // 变量名 "BUCKET" 会在函数里通过 context.env.BUCKET 访问
+  // 需要先在 Cloudflare Dashboard 创建 R2 bucket
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "art-website-images"
+    }
+  ],
+
+  // 环境变量（非敏感）
+  // 生产环境敏感变量建议用 wrangler secret put 单独配置
+  "vars": {
+    // 管理员密码（简单方案，后续可升级为 JWT 认证）
+    "ADMIN_PASSWORD": "changeme-admin-password-123",
+    // 允许上传的图片类型
+    "ALLOWED_MIME_TYPES": "image/jpeg,image/png,image/webp,image/gif,image/avif",
+    // 单张图片最大 10MB
+    "MAX_UPLOAD_SIZE": "10485760"
+  }
+}

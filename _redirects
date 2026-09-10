@@ -1,0 +1,11 @@
+# Cloudflare Pages 重定向规则
+# 参考：https://developers.cloudflare.com/pages/configuration/redirects/
+
+# 让所有 SPA 前端路由都回退到 index.html（用于 /about, /contact 等）
+# 但 /api/*, /admin/*, /r2/* 不 fallback（由后端处理）
+/about    /index.html 200
+/contact  /index.html 200
+
+# 后台管理页
+/admin    /admin/index.html 200
+
