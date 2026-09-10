@@ -24,11 +24,12 @@
     el.className = 'toast' + (type ? ' ' + type : '');
     el.textContent = msg;
     container.appendChild(el);
+    const duration = type === 'error' ? 7000 : 2500;
     setTimeout(() => {
       el.style.transition = 'opacity .3s';
       el.style.opacity = '0';
       setTimeout(() => el.remove(), 300);
-    }, 2500);
+    }, duration);
   }
 
   // ---------- API ----------
@@ -57,7 +58,13 @@
       throw new Error('登录已过期');
     }
     if (!res.ok || !data.ok) {
-      throw new Error(data.message || data.error || '请求失败');
+      let msg = data.message || data.error || '请求失败';
+      if (Array.isArray(data.details) && data.details.length) {
+        msg += '\n' + data.details.map(function (d, i) {
+          return (i + 1) + '. ' + d;
+        }).join('\n');
+      }
+      throw new Error(msg);
     }
     return data.data;
   }

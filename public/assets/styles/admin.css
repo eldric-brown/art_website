@@ -575,6 +575,8 @@ ul { list-style: none; }
   box-shadow: var(--shadow-md);
   animation: toastIn .32s var(--ease-out);
   max-width: 360px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .toast.success { background: var(--color-success); }
