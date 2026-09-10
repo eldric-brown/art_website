@@ -5,12 +5,14 @@ export async function onRequest({ request, env }) {
     return methodNotAllowed(['GET', 'HEAD']);
   }
 
+  // 图片已改为外链方案，R2 绑定变为可选：未绑定时 upload 接口返回 bucket_not_configured，
+  // 不影响站点与后台其余功能的正常运作。
   const checks = {
     databaseBinding: Boolean(env.DB),
     storageBinding: Boolean(env.BUCKET)
   };
 
-  if (!checks.databaseBinding || !checks.storageBinding) {
+  if (!checks.databaseBinding) {
     return json({
       ok: false,
       service: 'art-website',

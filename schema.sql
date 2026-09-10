@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS artworks (
     title       TEXT    NOT NULL,                    -- 作品标题
     slug        TEXT    NOT NULL UNIQUE,             -- URL 友好的英文标识（用于详情页）
     description TEXT    DEFAULT '',                  -- 作品简介 / 创作背景
-    images      TEXT    NOT NULL,                    -- JSON 数组字符串：["url1", "url2"]，指向 R2 图片地址
+    images      TEXT    NOT NULL,                    -- JSON 数组字符串：["url1", "url2"]，图片地址（HTTPS 外链或站内 /r2/ 路径）
     category    TEXT    NOT NULL DEFAULT 'other',    -- 分类：oil/watercolor/sketch/digital/photograph/other
     year        INTEGER NOT NULL,                    -- 创作年份
     medium      TEXT    DEFAULT '',                  -- 媒介：如"布面油画"、"水彩纸"

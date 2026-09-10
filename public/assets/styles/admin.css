@@ -447,25 +447,20 @@ ul { list-style: none; }
   gap: 18px;
 }
 
-.dropzone {
-  border: 1.5px dashed var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 46px 20px;
-  text-align: center;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: border-color .2s var(--ease), background .2s var(--ease), color .2s var(--ease);
-  background: var(--color-bg-soft);
+/* 图片链接输入（外链方案，取代拖拽上传） */
+.url-input-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
 }
 
-.dropzone:hover,
-.dropzone.dragover {
-  border-color: var(--color-accent);
-  background: rgba(0, 102, 204, 0.045);
-  color: var(--color-accent);
+.url-input-row textarea {
+  flex: 1;
+  min-height: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
 }
-
-.dropzone-input { display: none; }
 
 .preview-list {
   display: grid;

@@ -92,7 +92,7 @@ window.Views = (function () {
 
       const galleryHtml = artworks.length
         ? Views._renderGallery(artworks)
-        : Views.empty('暂无作品', '汤一白尚未上传作品');
+        : Views.empty('暂无作品', '汤一白尚未发布作品');
 
       return '<section class="section">' +
              '<div class="section-header">' +

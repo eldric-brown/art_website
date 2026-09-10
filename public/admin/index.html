@@ -158,14 +158,15 @@
         </div>
 
         <div class="field-group field">
-          <label>图片 *</label>
-          <div class="dropzone" id="dropzone">
-            <p>📷 点击上传或拖拽图片到此处</p>
-            <p style="font-size:12px;margin-top:6px;">支持 JPG / PNG / WebP / GIF，单张 ≤ 10MB</p>
-            <input type="file" name="images" class="dropzone-input" id="file-input" multiple accept="image/*">
+          <label>图片 *（填写图片链接，每行一个）</label>
+          <div class="url-input-row">
+            <textarea id="image-url-input" rows="3" placeholder="https://example.com/image.jpg"></textarea>
+            <button type="button" class="btn" id="btn-add-urls">添加</button>
           </div>
           <div class="preview-list" id="preview-list"></div>
-          <p style="font-size:12px;color:var(--color-text-secondary);margin-top:8px;" id="upload-status"></p>
+          <p style="font-size:12px;color:var(--color-text-secondary);margin-top:8px;">
+            支持任意 HTTPS 图片直链（图床、GitHub raw、OSS 等），已添加 <span id="image-count">0</span> 张，最多 20 张
+          </p>
         </div>
 
         <div class="field-row">

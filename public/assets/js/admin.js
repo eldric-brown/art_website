@@ -184,7 +184,7 @@
     form.querySelector('[name=sort_order]').value = '0';
     document.getElementById('modal-title').textContent = '新建作品';
     document.getElementById('preview-list').innerHTML = '';
-    document.getElementById('upload-status').textContent = '';
+    document.getElementById('image-url-input').value='';
     document.getElementById('artwork-modal').hidden = false;
   }
 
@@ -193,6 +193,7 @@
     if (!artwork) return;
     state.editingId = id;
     state.uploadedUrls = artwork.images.slice();
+    document.getElementById('image-url-input').value='';
 
     const form = document.getElementById('artwork-form');
     form.reset();
@@ -213,56 +214,58 @@
   }
 
   function closeModal() {
-    document.getElementById('artwork-modal').hidden = true;
+    document.getElementById('image-url-input').value='';
     state.uploadedUrls = [];
     document.getElementById('preview-list').innerHTML = '';
-    document.getElementById('upload-status').textContent = '';
   }
 
-  // ---------- 图片上传 ----------
-  function setupDropzone() {
-    const dropzone = document.getElementById('dropzone');
-    const fileInput = document.getElementById('file-input');
+  // ---------- Image URLs (external-link mode, R2 unbound) ----------
+  // 图片已改为外链方案（未绑定 R2 等对象存储）：把图片放到自己的图床，
+  // 在此粘贴 HTTPS 直链即可。后端仍接受站内 /r2/artworks/ 地址，便于日后恢复 R2。
+  const URL_INPUT_ID = 'image-url-input';
+  const MAX_IMAGES = 20;
+  const VALID_IMAGE_URL = /^(https:\/\/\S+|\/r2\/artworks\/\S+)$/i;
 
-    dropzone.onclick = () => fileInput.click();
-    fileInput.onchange = () => handleFiles(fileInput.files);
-
-    dropzone.ondragover = (e) => { e.preventDefault(); dropzone.classList.add('dragover'); };
-    dropzone.ondragleave = () => dropzone.classList.remove('dragover');
-    dropzone.ondrop = (e) => {
-      e.preventDefault();
-      dropzone.classList.remove('dragover');
-      handleFiles(e.dataTransfer.files);
+  function setupImageUrls() {
+    document.getElementById('btn-add-urls').onclick = addImageUrls;
+    document.getElementById(URL_INPUT_ID).onkeydown = function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        addImageUrls();
+      }
     };
   }
 
-  async function handleFiles(files) {
-    if (!files || !files.length) return;
-    const statusEl = document.getElementById('upload-status');
-    const formData = new FormData();
+  function addImageUrls() {
+    const input = document.getElementById(URL_INPUT_ID);
+    const text = (input.value || '').trim();
+    if (!text) return;
 
-    Array.from(files).forEach(function (file) {
-      formData.append('images', file);
+    const added = [];
+    const invalid = [];
+
+    text.split(/[\r\n,]+/).forEach(function (line) {
+      const url = line.trim();
+      if (!url) return;
+      if (!VALID_IMAGE_URL.test(url)) { invalid.push(url); return; }
+      if (state.uploadedUrls.indexOf(url) !== -1) return;
+      if (state.uploadedUrls.length >= MAX_IMAGES) return;
+      state.uploadedUrls.push(url);
+      added.push(url);
     });
 
-    statusEl.textContent = '上传中……';
-
-    try {
-      const data = await api('/api/admin/upload', {
-        method: 'POST',
-        body: formData
-      });
-      state.uploadedUrls.push(...data.urls);
-      renderPreviewList();
-      statusEl.textContent = '✅ 已上传 ' + data.count + ' 张图片';
-      toast('上传成功', 'success');
-    } catch (error) {
-      statusEl.textContent = '❌ ' + error.message;
-      toast(error.message, 'error');
+    input.value = '';
+    if (added.length) renderPreviewList();
+    if (invalid.length) {
+      toast('无效地址（需以 https:// 开头）：' + invalid.join('、'), 'error');
+    } else if (added.length) {
+      toast('已添加 ' + added.length + ' 张图片', 'success');
     }
   }
   function renderPreviewList() {
     const list = document.getElementById('preview-list');
+    const countEl = document.getElementById('image-count');
+    if (countEl) countEl.textContent = state.uploadedUrls.length;
     list.innerHTML = state.uploadedUrls.map(function (url, idx) {
       return '<div class="preview-item">' +
         '<img src="' + escapeHtml(url) + '" alt="预览">' +
@@ -288,7 +291,7 @@
     const fd = new FormData(form);
 
     if (state.uploadedUrls.length === 0) {
-      toast('请至少上传一张图片', 'error');
+      toast('请至少添加一张图片链接', 'error');
       return;
     }
 
@@ -417,7 +420,7 @@
   // ---------- 初始化 ----------
   function init() {
     setupTabs();
-    setupDropzone();
+    setupImageUrls();
     setupLogout();
 
     $('#btn-new-artwork').onclick = openNewModal;
