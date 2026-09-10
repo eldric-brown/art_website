@@ -1,53 +1,58 @@
-// ============================================================
-// PATCH /api/admin/artworks/[id]  - 更新作品（含上架/下架）
-// DELETE /api/admin/artworks/[id] - 删除作品
-// ============================================================
+import {
+  json,
+  methodNotAllowed,
+  safeParseJSON,
+  validateArtworkPayload
+} from '../../../_lib/http.js';
 
 export async function onRequest({ request, env, params }) {
-  const id = parseInt(params.id, 10);
-  if (!id || isNaN(id)) {
+  const id = Number(params.id);
+  if (!/^\d+$/.test(String(params.id || '')) || !Number.isSafeInteger(id) || id <= 0) {
     return json({ ok: false, error: 'invalid_id' }, 400);
   }
 
-  if (request.method === 'PATCH') {
-    return handlePatch(id, request, env);
-  }
-
-  if (request.method === 'DELETE') {
-    return handleDelete(id, env);
-  }
-
-  return json({ ok: false, error: 'method_not_allowed' }, 405);
+  if (request.method === 'PATCH') return handlePatch(id, request, env);
+  if (request.method === 'DELETE') return handleDelete(id, env);
+  return methodNotAllowed(['PATCH', 'DELETE']);
 }
 
-// ---------- PATCH ----------
 async function handlePatch(id, request, env) {
+  let body;
   try {
-    const body = await request.json();
-    const allowed = ['title', 'slug', 'description', 'category', 'year', 'medium', 'dimensions', 'published', 'featured', 'sort_order', 'images'];
+    body = await request.json();
+  } catch {
+    return json({ ok: false, error: 'invalid_json' }, 400);
+  }
 
-    const setClauses = [];
-    const bindValues = [];
+  const { errors, data } = validateArtworkPayload(body, { partial: true });
+  if (errors.length) {
+    return json({ ok: false, error: 'validation_failed', details: errors }, 422);
+  }
 
-    for (const key of allowed) {
-      if (key in body) {
-        let value = body[key];
-        if (key === 'images' && Array.isArray(value)) {
-          value = JSON.stringify(value);
-        }
-        if (key === 'published' || key === 'featured') {
-          value = value ? 1 : 0;
-        }
-        setClauses.push(`${key} = ?`);
-        bindValues.push(value);
+  if (Object.keys(data).length === 0) {
+    return json({ ok: false, error: 'no_fields_to_update' }, 400);
+  }
+
+  try {
+    if (data.slug) {
+      const duplicate = await env.DB.prepare(
+        'SELECT id FROM artworks WHERE slug = ? AND id <> ? LIMIT 1'
+      ).bind(data.slug, id).first();
+
+      if (duplicate) {
+        return json({
+          ok: false,
+          error: 'slug_exists',
+          message: `slug "${data.slug}" 已存在`
+        }, 409);
       }
     }
 
-    if (setClauses.length === 0) {
-      return json({ ok: false, error: 'no_fields_to_update' }, 400);
-    }
-
+    const keys = Object.keys(data);
+    const setClauses = keys.map((key) => `${key} = ?`);
+    const bindValues = keys.map((key) => key === 'images' ? JSON.stringify(data[key]) : data[key]);
     bindValues.push(id);
+
     const result = await env.DB.prepare(
       `UPDATE artworks SET ${setClauses.join(', ')} WHERE id = ?`
     ).bind(...bindValues).run();
@@ -57,21 +62,29 @@ async function handlePatch(id, request, env) {
     }
 
     const row = await env.DB.prepare(
-      'SELECT id, title, slug, images, category, year, medium, dimensions, published, featured, sort_order, views, created_at, updated_at FROM artworks WHERE id = ?'
+      `SELECT id, title, slug, description, images, category, year, medium, dimensions,
+              published, featured, sort_order, views, created_at, updated_at
+       FROM artworks WHERE id = ?`
     ).bind(id).first();
 
-    return Response.json({
+    return json({
       ok: true,
-      data: { ...row, images: JSON.parse(row.images) },
+      data: { ...row, images: safeParseJSON(row.images, []) },
       message: '更新成功'
     });
-  } catch (e) {
-    console.error('patch failed:', e);
-    return json({ ok: false, error: 'internal_error', message: e.message }, 500);
+  } catch (error) {
+    console.error('patch artwork failed:', error);
+    if (String(error?.message || '').includes('UNIQUE constraint failed: artworks.slug')) {
+      return json({ ok: false, error: 'slug_exists', message: 'slug 已存在' }, 409);
+    }
+    return json({
+      ok: false,
+      error: 'internal_error',
+      message: '作品更新失败'
+    }, 500);
   }
 }
 
-// ---------- DELETE ----------
 async function handleDelete(id, env) {
   try {
     const result = await env.DB.prepare('DELETE FROM artworks WHERE id = ?')
@@ -81,19 +94,14 @@ async function handleDelete(id, env) {
       return json({ ok: false, error: 'not_found' }, 404);
     }
 
-    // 同时清理浏览量记录
     await env.DB.prepare('DELETE FROM view_logs WHERE artwork_id = ?').bind(id).run();
-
-    return Response.json({ ok: true, message: '删除成功' });
-  } catch (e) {
-    console.error('delete failed:', e);
-    return json({ ok: false, error: 'internal_error', message: e.message }, 500);
+    return json({ ok: true, message: '删除成功' });
+  } catch (error) {
+    console.error('delete artwork failed:', error);
+    return json({
+      ok: false,
+      error: 'internal_error',
+      message: '作品删除失败'
+    }, 500);
   }
-}
-
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json' }
-  });
 }

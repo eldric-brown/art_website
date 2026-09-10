@@ -56,9 +56,12 @@ CREATE TABLE IF NOT EXISTS view_logs (
 );
 CREATE INDEX IF NOT EXISTS idx_view_logs_artwork ON view_logs(artwork_id, viewed_at);
 
--- 触发器：updated_at 自动更新
-CREATE TRIGGER IF NOT EXISTS trg_artworks_update_time
-AFTER UPDATE ON artworks
+-- 触发器：内容变更时自动更新 updated_at
+-- 不监听 views，避免浏览量增加后把作品误判为刚编辑。
+DROP TRIGGER IF EXISTS trg_artworks_update_time;
+CREATE TRIGGER trg_artworks_update_time
+AFTER UPDATE OF title, slug, description, images, category, year, medium,
+                dimensions, published, featured, sort_order ON artworks
 FOR EACH ROW
 BEGIN
     UPDATE artworks SET updated_at = datetime('now')

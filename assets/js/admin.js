@@ -34,18 +34,27 @@
   // ---------- API ----------
   async function api(url, options) {
     options = options || {};
+    const headers = new Headers(options.headers || {});
+    const hasBody = options.body != null;
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+
+    if (hasBody && !isFormData && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
+
     const opts = {
-      headers: Object.assign({ 'Content-Type': 'application/json' }, options.headers || {}),
+      headers: headers,
       credentials: 'same-origin'
     };
     if (options.method) opts.method = options.method;
-    if (options.body) opts.body = options.body;
+    if (hasBody) opts.body = options.body;
 
     const res = await fetch(url, opts);
     const data = await res.json().catch(() => ({}));
     if (res.status === 401) {
-      window.location.href = '/admin/login' + (data.next ? '?next=' + encodeURIComponent(location.pathname) : '');
-      throw new Error('未授权');
+      const next = encodeURIComponent(location.pathname + location.search);
+      window.location.href = '/admin/login?next=' + next;
+      throw new Error('登录已过期');
     }
     if (!res.ok || !data.ok) {
       throw new Error(data.message || data.error || '请求失败');
@@ -230,34 +239,28 @@
   async function handleFiles(files) {
     if (!files || !files.length) return;
     const statusEl = document.getElementById('upload-status');
-
     const formData = new FormData();
-    Array.from(files).forEach(f => formData.append('images', f));
+
+    Array.from(files).forEach(function (file) {
+      formData.append('images', file);
+    });
 
     statusEl.textContent = '上传中……';
 
     try {
-      const res = await fetch('/api/admin/upload', {
+      const data = await api('/api/admin/upload', {
         method: 'POST',
-        credentials: 'same-origin',
         body: formData
       });
-      const data = await res.json();
-
-      if (data.ok) {
-        state.uploadedUrls.push(...data.data.urls);
-        renderPreviewList();
-        statusEl.textContent = '✅ 已上传 ' + data.data.count + ' 张图片';
-        toast('上传成功', 'success');
-      } else {
-        throw new Error(data.message || '上传失败');
-      }
-    } catch (e) {
-      statusEl.textContent = '❌ ' + e.message;
-      toast(e.message, 'error');
+      state.uploadedUrls.push(...data.urls);
+      renderPreviewList();
+      statusEl.textContent = '✅ 已上传 ' + data.count + ' 张图片';
+      toast('上传成功', 'success');
+    } catch (error) {
+      statusEl.textContent = '❌ ' + error.message;
+      toast(error.message, 'error');
     }
   }
-
   function renderPreviewList() {
     const list = document.getElementById('preview-list');
     list.innerHTML = state.uploadedUrls.map(function (url, idx) {

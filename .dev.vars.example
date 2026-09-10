@@ -1,0 +1,7 @@
+# 本地开发变量示例：复制为 .dev.vars 后填写真实值。
+
+ADMIN_PASSWORD="请设置至少 12 位的强密码"
+SESSION_SECRET="请设置至少 32 字节的随机字符串"
+ALLOWED_MIME_TYPES="image/jpeg,image/png,image/webp,image/gif,image/avif"
+MAX_UPLOAD_SIZE="10485760"
+MAX_TOTAL_UPLOAD_SIZE="41943040"

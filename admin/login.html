@@ -52,8 +52,17 @@
 
         if (data.ok) {
           // 跳转到管理主页
-          const next = new URLSearchParams(location.search).get('next');
-          window.location.href = next || '/admin/';
+          const rawNext = new URLSearchParams(location.search).get('next') || '/admin/';
+          let next = '/admin/';
+          try {
+            if (rawNext.startsWith('/') && !rawNext.startsWith('//') && !rawNext.includes('\\')) {
+              const target = new URL(rawNext, location.origin);
+              if (target.origin === location.origin) {
+                next = target.pathname + target.search + target.hash;
+              }
+            }
+          } catch (e) {}
+          window.location.href = next;
         } else {
           errEl.textContent = data.message || '密码错误';
           btn.disabled = false;

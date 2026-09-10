@@ -1,37 +1,45 @@
-// ============================================================
-// GET /r2/[[key]]
-// R2 图片代理路由（multipath 版本）
-// 场景：当 R2 bucket 未开启 public 访问时，通过本站代理读取
-//
-// 用法：/r2/artworks/2025-09-10/xxx.jpg
-//       → params.key = "artworks/2025-09-10/xxx.jpg"
-// ============================================================
+import { json, methodNotAllowed } from '../_lib/http.js';
 
-export async function onRequest({ env, params }) {
-  const key = decodeURIComponent(params.key);
+export async function onRequest({ request, env, params }) {
+  if (!['GET', 'HEAD'].includes(request.method)) {
+    return methodNotAllowed(['GET', 'HEAD']);
+  }
 
-  if (!key || !key.startsWith('artworks/')) {
-    return Response.json({ ok: false, error: 'invalid_key' }, 400);
+  let key;
+  try {
+    key = decodeURIComponent(params.key || '');
+  } catch {
+    return json({ ok: false, error: 'invalid_key' }, 400);
+  }
+
+  if (!key || !key.startsWith('artworks/') || key.includes('..') || key.includes('\\') || key.includes('\0')) {
+    return json({ ok: false, error: 'invalid_key' }, 400);
   }
 
   if (!env.BUCKET) {
-    return Response.json({ ok: false, error: 'bucket_not_configured' }, 500);
+    return json({ ok: false, error: 'bucket_not_configured' }, 500);
   }
 
-  const obj = await env.BUCKET.get(key);
-  if (!obj) {
-    return Response.json({ ok: false, error: 'not_found' }, 404);
-  }
+  try {
+    const object = await env.BUCKET.get(key);
+    if (!object) return json({ ok: false, error: 'not_found' }, 404);
 
-  const contentType = obj.httpMetadata?.contentType || 'application/octet-stream';
-  const cacheControl = 'public, max-age=31536000, immutable';
-
-  return new Response(obj.body, {
-    headers: {
-      'Content-Type': contentType,
-      'Cache-Control': cacheControl,
-      'Content-Length': String(obj.size),
+    const headers = new Headers({
+      'Content-Type': object.httpMetadata?.contentType || 'application/octet-stream',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Content-Length': String(object.size),
+      'ETag': object.etag || '',
+      'X-Content-Type-Options': 'nosniff',
       'Access-Control-Allow-Origin': '*'
+    });
+
+    if (object.etag && request.headers.get('If-None-Match') === object.etag) {
+      return new Response(null, { status: 304, headers });
     }
-  });
+
+    return new Response(request.method === 'HEAD' ? null : object.body, { headers });
+  } catch (error) {
+    console.error('read R2 object failed:', error);
+    return json({ ok: false, error: 'storage_error' }, 500);
+  }
 }

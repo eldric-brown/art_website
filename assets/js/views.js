@@ -111,7 +111,7 @@ window.Views = (function () {
       return artworks.map(function (art) {
         const img = (art.images && art.images[0]) || '';
         const slug = art.slug || '';
-        return '<a href="#/work/' + U.escapeHtml(slug) + '" class="gallery-card reveal">' +
+        return '<a href="#/works/' + U.escapeHtml(encodeURIComponent(slug)) + '" class="gallery-card reveal">' +
               '<div class="gallery-card-image">' +
                 (img ? '<img src="' + U.escapeHtml(img) + '" alt="' + U.escapeHtml(art.title) + '" loading="lazy">' : '<div class="gallery-card-placeholder"></div>') +
               '</div>' +

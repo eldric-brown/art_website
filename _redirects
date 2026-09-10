@@ -8,4 +8,4 @@
 
 # 后台管理页
 /admin    /admin/index.html 200
-
+/admin/login /admin/login.html 200

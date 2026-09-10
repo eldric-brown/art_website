@@ -7,23 +7,30 @@ window.State = { category: 'all', currentSlug: null };
 (function () {
   'use strict';
 
+  function normalizeEntryRoute() {
+    const path = location.pathname.replace(/\/+$/, '') || '/';
+    const pathMap = {
+      '/about': '#/about',
+      '/contact': '#/contact'
+    };
+
+    if (!location.hash && pathMap[path]) {
+      history.replaceState(null, '', pathMap[path]);
+    }
+  }
+
   function init() {
-    // 当前年份
     const yearEl = document.getElementById('year');
     if (yearEl) yearEl.textContent = new Date().getFullYear();
 
-    // Hash 路由变化监听
+    normalizeEntryRoute();
+
     window.addEventListener('hashchange', function () {
       window.Router.navigate();
     });
 
-    // 首次加载
-    if (!location.hash) {
-      history.replaceState(null, '', '#/');
-      window.Router.navigate();
-    } else {
-      window.Router.navigate();
-    }
+    if (!location.hash) history.replaceState(null, '', '#/');
+    window.Router.navigate();
   }
 
   if (document.readyState === 'loading') {
