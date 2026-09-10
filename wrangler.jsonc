@@ -3,7 +3,8 @@
   // 参考：https://developers.cloudflare.com/pages/functions/bindings/
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "art-website",
-  "pages_build_output_dir": ".",
+  // 只发布 public/ 目录：否则仓库里的 wrangler.jsonc、schema.sql、.dev.vars 等会被当成静态资源公开
+  "pages_build_output_dir": "public",
   "compatibility_date": "2025-09-01",
 
   // 数据库绑定：D1
@@ -28,7 +29,7 @@
   ],
 
   // 环境变量（非敏感）
-  // 生产环境敏感变量建议用 wrangler secret put 单独配置
+  // 生产环境敏感变量使用 wrangler pages secret put 单独配置
   "vars": {
     // 允许上传的图片类型
     "ALLOWED_MIME_TYPES": "image/jpeg,image/png,image/webp,image/gif,image/avif",

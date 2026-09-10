@@ -24,7 +24,7 @@ npx wrangler@latest d1 create art-website-db
 "database_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 ```
 
-当前仓库里是 `<REPLACE_WITH_YOUR_D1_DATABASE_ID>`，未替换时不能视为可部署状态。
+仓库里的 `database_id` 已经填入了真实值，可以直接部署。如果换成自己的数据库，记得同步更新这一项。
 
 ### 2. 创建 R2 Bucket
 
@@ -65,8 +65,11 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ### 5. 部署
 
 ```powershell
-npx wrangler@latest pages deploy . --project-name art-website
+npx wrangler@latest pages deploy public --project-name art-website
 ```
+
+> 输出目录必须是 `public`，不能是 `.`。写成 `.` 会把 `wrangler.jsonc`、`schema.sql`、
+> `.dev.vars`（含明文管理员密码）等仓库文件当成静态资源一并发布到公网。
 
 部署后先访问：
 
@@ -99,13 +102,14 @@ npx wrangler@latest pages dev .
 .
 ├── wrangler.jsonc
 ├── schema.sql
-├── _redirects
 ├── .dev.vars.example
-├── index.html
-├── admin/
-│   ├── login.html
-│   └── index.html
-├── assets/
+├── public/                        ← pages_build_output_dir，只有这个目录会被发布
+│   ├── _redirects
+│   ├── index.html
+│   ├── admin/
+│   │   ├── login.html
+│   │   └── index.html
+│   ├── assets/
 │   ├── styles/
 │   └── js/
 └── functions/

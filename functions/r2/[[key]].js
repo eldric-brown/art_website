@@ -7,7 +7,8 @@ export async function onRequest({ request, env, params }) {
 
   let key;
   try {
-    key = decodeURIComponent(params.key || '');
+    const rawKey = Array.isArray(params.key) ? params.key.join('/') : (params.key || '');
+    key = decodeURIComponent(rawKey);
   } catch {
     return json({ ok: false, error: 'invalid_key' }, 400);
   }

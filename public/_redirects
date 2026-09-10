@@ -6,6 +6,7 @@
 /about    /index.html 200
 /contact  /index.html 200
 
-# 后台管理页
-/admin    /admin/index.html 200
-/admin/login /admin/login.html 200
+# 注意：不要为 /admin、/admin/login 写 rewrite 规则。
+# Pages 会自动把 /admin/login 解析到 /admin/login.html；
+# 若再写 rewrite，会与 .html 后缀规范化互相冲突，产生 308 重定向循环。
+
