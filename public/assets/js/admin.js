@@ -221,9 +221,12 @@
   }
 
   function closeModal() {
+    document.getElementById('artwork-modal').hidden = true;
     document.getElementById('image-url-input').value='';
     state.uploadedUrls = [];
     document.getElementById('preview-list').innerHTML = '';
+    const countEl = document.getElementById('image-count');
+    if (countEl) countEl.textContent = '0';
   }
 
   // ---------- Image URLs (external-link mode, R2 unbound) ----------
