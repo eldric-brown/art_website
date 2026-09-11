@@ -2,6 +2,33 @@
 // utils.js - 通用工具函数
 // ============================================================
 
+// 全局状态（放在 utils.js 是因为 T/Tf 依赖 State.content，
+// 而 views.js 在 IIFE 初始化时就捕获 T，所以这些必须早于 views.js 加载）
+window.State = {
+  category: 'all',
+  currentId: null,
+  content: {},
+  contentReady: null
+};
+
+// T(key, fallback)：优先从 State.content 取；无 key 时返回 fallback 或空串
+window.T = function (key, fallback) {
+  const value = window.State.content[key];
+  if (value != null && value !== '') return value;
+  return fallback != null ? fallback : '';
+};
+
+// 把 value 里的占位符 {year} 等替换
+window.Tf = function (key, vars, fallback) {
+  let value = window.T(key, fallback);
+  if (vars) {
+    for (const name of Object.keys(vars)) {
+      value = value.split('{' + name + '}').join(vars[name]);
+    }
+  }
+  return value;
+};
+
 window.Utils = (function () {
   'use strict';
 

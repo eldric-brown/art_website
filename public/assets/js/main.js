@@ -1,32 +1,9 @@
 // ============================================================
 // main.js - 应用初始化入口
+// （window.State / window.T / window.Tf 已在 utils.js 定义，
+//   因为 views.js 的 IIFE 在初始化时会立即捕获 T，
+//   而 views.js 加载早于 main.js。这里只做初始化逻辑。）
 // ============================================================
-
-// 前台文案从 site_content 表加载；T(key, fallback) 是全局翻译助手
-window.State = {
-  category: 'all',
-  currentId: null,
-  content: {},
-  contentReady: null
-};
-
-// T(key, fallback)：优先从 State.content 取；无 key 时返回 fallback 或空串
-window.T = function (key, fallback) {
-  const value = window.State.content[key];
-  if (value != null && value !== '') return value;
-  return fallback != null ? fallback : '';
-};
-
-// 把 value 里的占位符 {year} 等替换
-window.Tf = function (key, vars, fallback) {
-  let value = window.T(key, fallback);
-  if (vars) {
-    for (const name of Object.keys(vars)) {
-      value = value.split('{' + name + '}').join(vars[name]);
-    }
-  }
-  return value;
-};
 
 // 应用站点元信息（<title>、meta description、og:description）
 function applySiteMeta(content) {
