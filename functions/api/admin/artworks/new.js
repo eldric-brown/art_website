@@ -16,26 +16,13 @@ export async function onRequest({ request, env }) {
   }
 
   try {
-    const exists = await env.DB.prepare(
-      'SELECT id FROM artworks WHERE slug = ? LIMIT 1'
-    ).bind(data.slug).first();
-
-    if (exists) {
-      return json({
-        ok: false,
-        error: 'slug_exists',
-        message: `slug "${data.slug}" 已存在`
-      }, 409);
-    }
-
     const result = await env.DB.prepare(
       `INSERT INTO artworks
-         (title, slug, description, images, category, year, medium, dimensions,
+         (title, description, images, category, year, medium, dimensions,
           published, featured, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       data.title,
-      data.slug,
       data.description,
       JSON.stringify(data.images),
       data.category,
@@ -48,7 +35,7 @@ export async function onRequest({ request, env }) {
     ).run();
 
     const row = await env.DB.prepare(
-      `SELECT id, title, slug, description, images, category, year, medium, dimensions,
+      `SELECT id, title, description, images, category, year, medium, dimensions,
               published, featured, sort_order, views, created_at, updated_at
        FROM artworks WHERE id = ?`
     ).bind(result.meta.last_row_id).first();
@@ -60,9 +47,6 @@ export async function onRequest({ request, env }) {
     }, 201);
   } catch (error) {
     console.error('create artwork failed:', error);
-    if (String(error?.message || '').includes('UNIQUE constraint failed: artworks.slug')) {
-      return json({ ok: false, error: 'slug_exists', message: 'slug 已存在' }, 409);
-    }
     return json({
       ok: false,
       error: 'internal_error',

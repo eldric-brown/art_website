@@ -73,7 +73,8 @@
   const state = {
     artworks: [],
     editingId: null,
-    uploadedUrls: []
+    uploadedUrls: [],
+    contentOriginal: {}
   };
 
   // ---------- 作品列表 ----------
@@ -112,7 +113,7 @@
 
       return '<tr>' +
         '<td>' + (cover ? '<img class="cell-cover" src="' + escapeHtml(cover) + '" alt="">' : '<div style="width:60px;height:60px;background:var(--color-bg-alt);border-radius:6px;"></div>') + '</td>' +
-        '<td><strong>' + escapeHtml(a.title) + '</strong><br><span style="font-size:12px;color:var(--color-text-secondary);">' + escapeHtml(a.slug) + '</span></td>' +
+        '<td><strong>' + escapeHtml(a.title) + '</strong><br><span style="font-size:12px;color:var(--color-text-secondary);">#' + a.id + '</span></td>' +
         '<td>' + escapeHtml(a.category) + '</td>' +
         '<td>' + a.year + '</td>' +
         '<td>' + (pubBadge + ' ' + featBadge) + '</td>' +
@@ -205,7 +206,6 @@
     const form = document.getElementById('artwork-form');
     form.reset();
     form.querySelector('[name=title]').value = artwork.title || '';
-    form.querySelector('[name=slug]').value = artwork.slug || '';
     form.querySelector('[name=category]').value = artwork.category || 'other';
     form.querySelector('[name=year]').value = artwork.year || new Date().getFullYear();
     form.querySelector('[name=medium]').value = artwork.medium || '';
@@ -307,7 +307,6 @@
 
     const data = {
       title: fd.get('title').trim(),
-      slug: fd.get('slug').trim(),
       category: fd.get('category'),
       year: parseInt(fd.get('year'), 10),
       medium: (fd.get('medium') || '').trim(),
@@ -400,6 +399,108 @@
     }
   }
 
+  // ---------- 站点文案 ----------
+  // 前端所有 key 按分组显示，方便批量编辑
+  const CONTENT_GROUPS = [
+    { title: '导航与站点元信息', keys: [
+      'nav.home', 'nav.works', 'nav.about', 'nav.contact',
+      'site.title', 'site.description', 'site.og_description', 'site.logo'
+    ]},
+    { title: '首页 Hero 与 Featured', keys: [
+      'hero.eyebrow', 'hero.subtitle', 'hero.cta.primary', 'hero.cta.secondary',
+      'featured.title', 'featured.subtitle', 'featured.viewAll'
+    ]},
+    { title: '作品列表与分类', keys: [
+      'works.title', 'works.subtitle', 'works.empty.title', 'works.empty.subtitle',
+      'category.all', 'category.oil', 'category.watercolor', 'category.sketch',
+      'category.ink', 'category.digital', 'category.photograph', 'category.other'
+    ]},
+    { title: '作品详情页', keys: [
+      'detail.back', 'detail.backBottom',
+      'detail.meta.category', 'detail.meta.year', 'detail.meta.medium',
+      'detail.meta.dimensions', 'detail.meta.published',
+      'detail.notFound.title', 'detail.notFound.subtitle', 'detail.noImages'
+    ]},
+    { title: '关于与联系', keys: [
+      'about.unavailable',
+      'contact.title', 'contact.subtitle',
+      'contact.email.label', 'contact.wechat.label', 'contact.note', 'contact.empty'
+    ]},
+    { title: '页脚', keys: [
+      'footer.brand', 'footer.links.works', 'footer.links.about',
+      'footer.links.contact', 'footer.links.admin', 'footer.copyright'
+    ]},
+    { title: '通用状态', keys: [
+      'common.loading', 'common.thumbnail',
+      'common.notFound.title', 'common.notFound.subtitle', 'common.backHome'
+    ]}
+  ];
+
+  async function loadSiteContent() {
+    const container = document.getElementById('content-groups');
+    container.innerHTML = '<div class="admin-empty"><h3>加载中……</h3></div>';
+    try {
+      const data = await api('/api/admin/site-content');
+      const content = data.content || {};
+
+      // 保存原始值，用于判断哪些条目被修改过（只保存 diff）
+      state.contentOriginal = {};
+      for (const key in content) {
+        state.contentOriginal[key] = content[key].value;
+      }
+
+      container.innerHTML = CONTENT_GROUPS.map(function (group) {
+        const rows = group.keys.map(function (key) {
+          const value = content[key] ? content[key].value : '';
+          return '<div class="field-group field">' +
+            '<label style="font-family:monospace;font-size:12px;color:var(--color-text-secondary);">' +
+              escapeHtml(key) +
+            '</label>' +
+            '<input type="text" data-content-key="' + escapeHtml(key) + '" value="' +
+              escapeHtml(value).replace(/"/g, '&quot;') + '">' +
+          '</div>';
+        }).join('');
+        return '<fieldset style="border:1px solid var(--color-border);border-radius:8px;padding:12px 16px;margin-bottom:16px;">' +
+               '<legend style="font-weight:600;padding:0 6px;">' + escapeHtml(group.title) + '</legend>' +
+               '<div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' + rows + '</div>' +
+             '</fieldset>';
+      }).join('');
+    } catch (e) {
+      container.innerHTML = '<div class="admin-empty"><h3>加载失败</h3><p>' + escapeHtml(e.message) + '</p></div>';
+    }
+  }
+
+  async function saveSiteContent() {
+    const inputs = document.querySelectorAll('[data-content-key]');
+    const payload = {};
+    inputs.forEach(function (input) {
+      const key = input.dataset.contentKey;
+      const original = state.contentOriginal[key] || '';
+      if (input.value !== original) {
+        payload[key] = input.value;
+      }
+    });
+
+    if (Object.keys(payload).length === 0) {
+      toast('没有改动', 'info');
+      return;
+    }
+
+    try {
+      const data = await api('/api/admin/site-content', {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+      state.contentOriginal = {};
+      for (const key in (data.content || {})) {
+        state.contentOriginal[key] = data.content[key].value;
+      }
+      toast('已保存 ' + Object.keys(payload).length + ' 项', 'success');
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  }
+
   // ---------- Tab 切换 ----------
   function setupTabs() {
     $$('.admin-nav-link[data-tab]').forEach(function (link) {
@@ -411,6 +512,7 @@
         $$('.admin-main section').forEach(s => s.hidden = true);
         $('#tab-' + tab).hidden = false;
         if (tab === 'about') loadArtist();
+        if (tab === 'content') loadSiteContent();
       };
     });
   }
@@ -445,6 +547,8 @@
     $('#artwork-form').onsubmit = saveArtwork;
     $('#artist-form').onsubmit = saveArtist;
     $('#btn-reset-artist').onclick = loadArtist;
+    $('#btn-save-content').onclick = saveSiteContent;
+    $('#btn-reset-content').onclick = loadSiteContent;
 
     let searchTimer;
     $('#search-input').oninput = function () {

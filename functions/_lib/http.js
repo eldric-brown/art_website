@@ -101,18 +101,6 @@ export function validateArtworkPayload(body, options = {}) {
   };
 
   requiredString('title', 200, 'title');
-  requiredString('slug', 100, 'slug');
-
-  if (data.slug) {
-    const slugIssues = [];
-    if (/[A-Z]/.test(data.slug)) slugIssues.push('不能含英文大写字母');
-    if (/[^a-zA-Z0-9-]/.test(data.slug)) slugIssues.push('只能含小写字母、数字和连字符');
-    if (/^[-]/.test(data.slug) || /[-]$/.test(data.slug)) slugIssues.push('不能以连字符开头或结尾');
-    if (/-{2,}/.test(data.slug)) slugIssues.push('不能包含连续连字符');
-    if (slugIssues.length) {
-      errors.push('slug 不符合规则：' + slugIssues.join('；') + '（示例：morning-garden）');
-    }
-  }
 
   optionalString('description', 10000, 'description');
   optionalString('medium', 200, 'medium');

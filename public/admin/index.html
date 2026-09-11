@@ -16,6 +16,7 @@
       </div>
       <a href="#" class="admin-nav-link active" data-tab="works">🎨 作品管理</a>
       <a href="#" class="admin-nav-link" data-tab="about">👤 艺术家资料</a>
+      <a href="#" class="admin-nav-link" data-tab="content">📝 站点文案</a>
       <a href="/" class="admin-nav-link" target="_blank">🌐 查看前台</a>
       <div class="admin-sidebar-footer">
         <a href="#" id="logout-btn">退出登录 →</a>
@@ -95,6 +96,24 @@
           </form>
         </div>
       </section>
+
+      <!-- 站点文案 tab -->
+      <section id="tab-content" hidden>
+        <div class="admin-header">
+          <h1>站点文案</h1>
+          <div class="admin-header-actions">
+            <button class="btn btn-primary" id="btn-save-content">保存全部</button>
+            <button class="btn" id="btn-reset-content">重置</button>
+          </div>
+        </div>
+
+        <div class="upload-form">
+          <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:16px;">
+            前台所有可见的英文文案都在这里。改动保存后即时生效。
+          </p>
+          <div id="content-groups"></div>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -112,11 +131,6 @@
         </div>
 
         <div class="field-row">
-          <div class="field-group field">
-            <label>URL Slug *</label>
-            <input type="text" name="slug" required placeholder="morning-garden">
-            <p style="font-size:12px;color:var(--color-text-secondary);margin:6px 0 0;">仅小写字母和数字，多个单词用单个连字符分隔</p>
-          </div>
           <div class="field-group field">
             <label>分类</label>
             <select name="category">

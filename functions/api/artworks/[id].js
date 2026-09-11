@@ -5,18 +5,18 @@ export async function onRequest({ request, env, params, waitUntil }) {
     return methodNotAllowed(['GET', 'HEAD']);
   }
 
-  const slug = String(params.slug || '').trim();
-  if (!slug || slug.length > 100) {
-    return json({ ok: false, error: 'invalid_slug' }, 400);
+  const id = Number(params.id);
+  if (!/^\d+$/.test(String(params.id || '')) || !Number.isSafeInteger(id) || id <= 0) {
+    return json({ ok: false, error: 'invalid_id' }, 400);
   }
 
   try {
     const row = await env.DB.prepare(
-      `SELECT id, title, slug, description, images, category, year, medium, dimensions,
+      `SELECT id, title, description, images, category, year, medium, dimensions,
               published, featured, sort_order, views, created_at, updated_at
        FROM artworks
-       WHERE slug = ? AND published = 1`
-    ).bind(slug).first();
+       WHERE id = ? AND published = 1`
+    ).bind(id).first();
 
     if (!row) {
       return json({

@@ -38,7 +38,7 @@ export async function onRequest({ request, env }) {
     const total = Number(countResult?.total || 0);
 
     const rows = await env.DB.prepare(
-      `SELECT id, title, slug, description, images, category, year, medium, dimensions,
+      `SELECT id, title, description, images, category, year, medium, dimensions,
               featured, sort_order, created_at
        FROM artworks
        ${whereClause}

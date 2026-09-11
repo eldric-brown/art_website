@@ -1,19 +1,18 @@
 // ============================================================
 // views.js - 视图渲染
-// 全局 State 由 main.js 提供，先声明占位
+// 前台所有文案通过 T(key) 从 site_content 表取；无 key 时使用英文兜底
 // ============================================================
-
-if (!window.State) window.State = { category: 'all', currentSlug: null };
 
 window.Views = (function () {
   'use strict';
   const U = window.Utils;
+  const T = window.T;
 
   return {
 
     loading: function () {
       return '<div class="loading-screen"><div class="spinner"></div>' +
-             '<p class="loading-text">正在加载...</p></div>';
+             '<p class="loading-text">' + U.escapeHtml(T('common.loading', 'Loading...')) + '</p></div>';
     },
 
     empty: function (title, subtitle) {
@@ -25,9 +24,9 @@ window.Views = (function () {
 
     notFound: function () {
       return '<section class="empty-state container" style="min-height:60vh;display:flex;flex-direction:column;justify-content:center;">' +
-             '<div class="empty-state-title">页面不存在</div>' +
-             '<p>你访问的路径似乎不存在</p>' +
-             '<p style="margin-top:24px;"><a href="#/" class="btn btn-primary">返回首页</a></p>' +
+             '<div class="empty-state-title">' + U.escapeHtml(T('common.notFound.title', 'Page Not Found')) + '</div>' +
+             '<p>' + U.escapeHtml(T('common.notFound.subtitle', 'The page you are looking for does not exist.')) + '</p>' +
+             '<p style="margin-top:24px;"><a href="#/" class="btn btn-primary">' + U.escapeHtml(T('common.backHome', 'Back to Home')) + '</a></p>' +
              '</section>';
     },
 
@@ -45,35 +44,35 @@ window.Views = (function () {
         featured = results[1].artworks || [];
       } catch (e) { console.warn('home load failed:', e); }
 
-      const artistName = (artist && artist.name) || '汤一白';
-      const bioShort = (artist && artist.bio_short) || '用色彩与线条，讲述每一个瞬间的故事';
+      const artistName = (artist && artist.name) || 'Tang Yibai';
+      const bioShort = (artist && artist.bio_short) || 'Using color and line to tell the story of every moment.';
 
       let featuredHtml = '';
       if (featured.length) {
         featuredHtml =
           '<section class="section">' +
             '<div class="section-header">' +
-              '<h2 class="section-title">精选作品</h2>' +
-              '<p class="section-subtitle">部分代表性作品 · 点击查看详情</p>' +
+              '<h2 class="section-title">' + U.escapeHtml(T('featured.title', 'Featured Works')) + '</h2>' +
+              '<p class="section-subtitle">' + U.escapeHtml(T('featured.subtitle', 'A selection of representative pieces · Click for details')) + '</p>' +
             '</div>' +
             '<div class="container">' +
               '<div class="gallery" id="featured-gallery">' +
                 Views._renderGallery(featured) +
               '</div>' +
               '<div style="text-align:center;margin-top:48px;">' +
-                '<a href="#/works" class="btn btn-primary">查看全部作品 →</a>' +
+                '<a href="#/works" class="btn btn-primary">' + U.escapeHtml(T('featured.viewAll', 'View All Works →')) + '</a>' +
               '</div>' +
             '</div>' +
           '</section>';
       }
 
       return '<section class="hero container reveal">' +
-             '<span class="hero-eyebrow">' + U.escapeHtml(artistName) + ' · Art Portfolio</span>' +
+             '<span class="hero-eyebrow">' + U.escapeHtml(T('hero.eyebrow', artistName + ' · Art Portfolio')) + '</span>' +
              '<h1 class="hero-title">' + U.escapeHtml(bioShort) + '</h1>' +
-             '<p class="hero-subtitle">绘画是灵魂的自白，用色彩与线条讲述每一个瞬间的故事。</p>' +
+             '<p class="hero-subtitle">' + U.escapeHtml(T('hero.subtitle', 'Painting as the confession of the soul — stories told through color and line.')) + '</p>' +
              '<div class="hero-cta">' +
-               '<a href="#/works" class="btn btn-primary">浏览作品</a>' +
-               '<a href="#/about" class="btn btn-secondary">了解艺术家</a>' +
+               '<a href="#/works" class="btn btn-primary">' + U.escapeHtml(T('hero.cta.primary', 'Browse Works')) + '</a>' +
+               '<a href="#/about" class="btn btn-secondary">' + U.escapeHtml(T('hero.cta.secondary', 'Meet the Artist')) + '</a>' +
              '</div>' +
            '</section>' +
            featuredHtml;
@@ -86,18 +85,18 @@ window.Views = (function () {
       const artworks = data.artworks || [];
 
       const filterHtml = window.CATEGORIES.map(function (c) {
-        return '<button class="filter-btn ' + (c.key === category ? 'active' : '') + '"' +
-               ' data-category="' + c.key + '">' + c.label + '</button>';
+        return '<button class="filter-btn ' + (c === category ? 'active' : '') + '"' +
+               ' data-category="' + c + '">' + T('category.' + c, c) + '</button>';
       }).join('');
 
       const galleryHtml = artworks.length
         ? Views._renderGallery(artworks)
-        : Views.empty('暂无作品', '汤一白尚未发布作品');
+        : Views.empty(T('works.empty.title', 'No Works Yet'), T('works.empty.subtitle', 'Tang Yibai has not published any works yet.'));
 
       return '<section class="section">' +
              '<div class="section-header">' +
-               '<h1 class="section-title">作品</h1>' +
-               '<p class="section-subtitle">按分类筛选，按时间排序显示。</p>' +
+               '<h1 class="section-title">' + U.escapeHtml(T('works.title', 'Works')) + '</h1>' +
+               '<p class="section-subtitle">' + U.escapeHtml(T('works.subtitle', 'Filter by category, sorted by year.')) + '</p>' +
              '</div>' +
              '<div class="container">' +
                '<div class="filter-bar" id="filter-bar">' + filterHtml + '</div>' +
@@ -110,8 +109,7 @@ window.Views = (function () {
     _renderGallery: function (artworks) {
       return artworks.map(function (art) {
         const img = (art.images && art.images[0]) || '';
-        const slug = art.slug || '';
-        return '<a href="#/works/' + U.escapeHtml(encodeURIComponent(slug)) + '" class="gallery-card reveal">' +
+        return '<a href="#/works/' + U.escapeHtml(String(art.id)) + '" class="gallery-card reveal">' +
               '<div class="gallery-card-image">' +
                 (img ? '<img src="' + U.escapeHtml(img) + '" alt="' + U.escapeHtml(art.title) + '" loading="lazy">' : '<div class="gallery-card-placeholder"></div>') +
               '</div>' +
@@ -124,27 +122,27 @@ window.Views = (function () {
     },
 
     // ---------- 作品详情页 ----------
-    artworkDetail: async function (slug) {
+    artworkDetail: async function (id) {
       document.body.dataset.view = 'detail';
-      window.State.currentSlug = slug;
+      window.State.currentId = id;
       let artwork;
       try {
-        artwork = await window.API.getArtwork(decodeURIComponent(slug));
+        artwork = await window.API.getArtwork(id);
       } catch (e) {
         if (e.status === 404) {
-          return Views.empty('作品不存在', '它可能已被下架或链接无效');
+          return Views.empty(T('detail.notFound.title', 'Artwork Not Found'), T('detail.notFound.subtitle', 'It may have been unpublished or the link is invalid.'));
         }
         throw e;
       }
 
       const images = artwork.images || [];
-      if (!images.length) return Views.empty('作品暂无图片');
+      if (!images.length) return Views.empty(T('detail.noImages', 'This artwork has no images.'));
 
       const mediumHtml = artwork.medium
-        ? '<dt class="meta-label">媒介</dt><dd class="meta-value">' + U.escapeHtml(artwork.medium) + '</dd>'
+        ? '<dt class="meta-label">' + U.escapeHtml(T('detail.meta.medium', 'Medium')) + '</dt><dd class="meta-value">' + U.escapeHtml(artwork.medium) + '</dd>'
         : '';
       const dimsHtml = artwork.dimensions
-        ? '<dt class="meta-label">尺寸</dt><dd class="meta-value">' + U.escapeHtml(artwork.dimensions) + '</dd>'
+        ? '<dt class="meta-label">' + U.escapeHtml(T('detail.meta.dimensions', 'Dimensions')) + '</dt><dd class="meta-value">' + U.escapeHtml(artwork.dimensions) + '</dd>'
         : '';
       const descHtml = artwork.description
         ? '<p class="artwork-detail-description">' + U.escapeHtml(artwork.description) + '</p>'
@@ -154,7 +152,7 @@ window.Views = (function () {
         ? '<div class="artwork-detail-thumbnails">' +
           images.map(function (img, i) {
             return '<img src="' + U.escapeHtml(img) + '"' +
-                   ' alt="缩略图 ' + (i + 1) + '"' +
+                   ' alt="' + U.escapeHtml(T('common.thumbnail', 'Thumbnail')) + ' ' + (i + 1) + '"' +
                    ' data-img-index="' + i + '"' +
                    ' data-full="' + U.escapeHtml(img) + '"' +
                    ' class="' + (i === 0 ? 'active' : '') + '">';
@@ -163,7 +161,7 @@ window.Views = (function () {
         : '';
 
       return '<section class="artwork-detail container">' +
-             '<a href="#/works" class="artwork-detail-back reveal">← 返回作品列表</a>' +
+             '<a href="#/works" class="artwork-detail-back reveal">' + U.escapeHtml(T('detail.back', '← Back to Works')) + '</a>' +
              '<div class="artwork-detail-grid">' +
                '<div class="reveal">' +
                  '<div class="artwork-detail-main-image" id="detail-main-image">' +
@@ -176,17 +174,17 @@ window.Views = (function () {
                '<aside class="artwork-detail-side reveal">' +
                  '<h1 class="artwork-detail-title">' + U.escapeHtml(artwork.title) + '</h1>' +
                  '<dl class="artwork-detail-meta">' +
-                   '<dt class="meta-label">分类</dt>' +
+                   '<dt class="meta-label">' + U.escapeHtml(T('detail.meta.category', 'Category')) + '</dt>' +
                    '<dd class="meta-value">' + U.escapeHtml(U.getCategoryLabel(artwork.category)) + '</dd>' +
-                   '<dt class="meta-label">年份</dt>' +
+                   '<dt class="meta-label">' + U.escapeHtml(T('detail.meta.year', 'Year')) + '</dt>' +
                    '<dd class="meta-value">' + artwork.year + '</dd>' +
                    mediumHtml + dimsHtml +
-                   '<dt class="meta-label">上架日期</dt>' +
+                   '<dt class="meta-label">' + U.escapeHtml(T('detail.meta.published', 'Published')) + '</dt>' +
                    '<dd class="meta-value">' + U.escapeHtml(U.formatDate(artwork.created_at)) + '</dd>' +
                  '</dl>' +
                  descHtml +
                  '<div style="margin-top:24px;">' +
-                   '<a href="#/works" class="btn btn-secondary">← 全部作品</a>' +
+                   '<a href="#/works" class="btn btn-secondary">' + U.escapeHtml(T('detail.backBottom', '← All Works')) + '</a>' +
                  '</div>' +
                '</aside>' +
              '</div>' +
@@ -199,9 +197,9 @@ window.Views = (function () {
       let artist = null;
       try { artist = await window.API.getArtist(); } catch (e) { console.warn(e); }
 
-      if (!artist) return Views.empty('艺术家信息暂不可用');
+      if (!artist) return Views.empty(T('about.unavailable', 'Artist information unavailable'));
 
-      const name = artist.name || '汤一白';
+      const name = artist.name || 'Tang Yibai';
       const nameEn = artist.name_en || '';
       const bioShort = artist.bio_short || '';
       const bio = artist.bio || '';
@@ -253,28 +251,28 @@ window.Views = (function () {
       let emailHtml = '';
       if (email) {
         emailHtml = '<div class="contact-item">' +
-                    '<div class="contact-item-label">Email</div>' +
+                    '<div class="contact-item-label">' + U.escapeHtml(T('contact.email.label', 'Email')) + '</div>' +
                     '<div class="contact-item-value"><a href="mailto:' + U.escapeHtml(email) + '">' + U.escapeHtml(email) + '</a></div>' +
                     '</div>';
       }
       let wechatHtml = '';
       if (wechat) {
         wechatHtml = '<div class="contact-item">' +
-                     '<div class="contact-item-label">WeChat</div>' +
+                     '<div class="contact-item-label">' + U.escapeHtml(T('contact.wechat.label', 'WeChat')) + '</div>' +
                      '<div class="contact-item-value">' + U.escapeHtml(wechat) + '</div>' +
                      '</div>';
       }
       const emptyHtml = (!email && !wechat)
         ? '<div class="contact-item">' +
-          '<div class="contact-item-label">说明</div>' +
-          '<div class="contact-item-value" style="font-size:14px;">汤一白尚未填写联系方式</div>' +
+          '<div class="contact-item-label">' + U.escapeHtml(T('contact.note', 'Note')) + '</div>' +
+          '<div class="contact-item-value" style="font-size:14px;">' + U.escapeHtml(T('contact.empty', 'Contact details not yet provided.')) + '</div>' +
           '</div>'
         : '';
 
       return '<section class="container">' +
              '<div class="contact-wrap reveal">' +
-               '<h1 class="section-title" style="margin-bottom:12px;">联系我们</h1>' +
-               '<p class="section-subtitle">合作、委托、展览、媒体采访——欢迎联系</p>' +
+               '<h1 class="section-title" style="margin-bottom:12px;">' + U.escapeHtml(T('contact.title', 'Contact')) + '</h1>' +
+               '<p class="section-subtitle">' + U.escapeHtml(T('contact.subtitle', 'Commissions, exhibitions, press inquiries — welcome.')) + '</p>' +
                '<div class="contact-info">' + emailHtml + wechatHtml + emptyHtml + '</div>' +
              '</div>' +
            '</section>';

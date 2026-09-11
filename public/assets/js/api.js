@@ -49,12 +49,16 @@ window.API = (function () {
       return request('/api/artworks' + (query ? '?' + query : ''));
     },
 
-    getArtwork: function (slug) {
-      return request('/api/artworks/' + encodeURIComponent(slug));
+    getArtwork: function (id) {
+      return request('/api/artworks/' + encodeURIComponent(id));
     },
 
     getArtist: function () {
       return request('/api/artist');
+    },
+
+    getSiteContent: function () {
+      return request('/api/site-content');
     }
   };
 })();

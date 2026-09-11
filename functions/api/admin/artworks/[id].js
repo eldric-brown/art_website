@@ -34,20 +34,6 @@ async function handlePatch(id, request, env) {
   }
 
   try {
-    if (data.slug) {
-      const duplicate = await env.DB.prepare(
-        'SELECT id FROM artworks WHERE slug = ? AND id <> ? LIMIT 1'
-      ).bind(data.slug, id).first();
-
-      if (duplicate) {
-        return json({
-          ok: false,
-          error: 'slug_exists',
-          message: `slug "${data.slug}" 已存在`
-        }, 409);
-      }
-    }
-
     const keys = Object.keys(data);
     const setClauses = keys.map((key) => `${key} = ?`);
     const bindValues = keys.map((key) => key === 'images' ? JSON.stringify(data[key]) : data[key]);
@@ -62,7 +48,7 @@ async function handlePatch(id, request, env) {
     }
 
     const row = await env.DB.prepare(
-      `SELECT id, title, slug, description, images, category, year, medium, dimensions,
+      `SELECT id, title, description, images, category, year, medium, dimensions,
               published, featured, sort_order, views, created_at, updated_at
        FROM artworks WHERE id = ?`
     ).bind(id).first();
@@ -74,9 +60,6 @@ async function handlePatch(id, request, env) {
     });
   } catch (error) {
     console.error('patch artwork failed:', error);
-    if (String(error?.message || '').includes('UNIQUE constraint failed: artworks.slug')) {
-      return json({ ok: false, error: 'slug_exists', message: 'slug 已存在' }, 409);
-    }
     return json({
       ok: false,
       error: 'internal_error',

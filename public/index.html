@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>汤一白 · 作品集</title>
-  <meta name="description" content="汤一白 · 个人作品集 · 绘画与视觉艺术">
+  <title>Tang Yibai · Portfolio</title>
+  <meta name="description" content="Tang Yibai · Personal Art Portfolio · Painting & Visual Arts">
 
   <!-- Open Graph（社交分享卡片） -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="汤一白 · 作品集">
-  <meta property="og:description" content="绘画与视觉艺术作品展示">
+  <meta property="og:title" content="Tang Yibai · Portfolio">
+  <meta property="og:description" content="Painting and visual art showcase">
 
   <!-- Apple 风格字体：San Francisco 优先，回退系统字体 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,13 +25,13 @@
     <div class="nav-inner">
       <a href="#/" class="nav-logo" data-link>
         <span class="logo-mark">A</span>
-        <span class="logo-text">汤一白</span>
+        <span class="logo-text" data-text="site.logo">Tang Yibai</span>
       </a>
       <ul class="nav-links">
-        <li><a href="#/" data-link>首页</a></li>
-        <li><a href="#/works" data-link>作品</a></li>
-        <li><a href="#/about" data-link>关于</a></li>
-        <li><a href="#/contact" data-link>联系</a></li>
+        <li><a href="#/" data-link data-text="nav.home">Home</a></li>
+        <li><a href="#/works" data-link data-text="nav.works">Works</a></li>
+        <li><a href="#/about" data-link data-text="nav.about">About</a></li>
+        <li><a href="#/contact" data-link data-text="nav.contact">Contact</a></li>
       </ul>
     </div>
   </nav>
@@ -40,23 +40,23 @@
   <main id="app">
     <div class="loading-screen">
       <div class="spinner"></div>
-      <p class="loading-text">正在加载作品……</p>
+      <p class="loading-text" data-text="common.loading">Loading...</p>
     </div>
   </main>
 
   <!-- ========== 底部 ========== -->
   <footer class="footer">
     <div class="footer-inner">
-      <a href="#/" class="footer-brand" data-link>汤一白 · Art Portfolio</a>
+      <a href="#/" class="footer-brand" data-link data-text="footer.brand">Tang Yibai · Art Portfolio</a>
       <span class="footer-sep" aria-hidden="true">·</span>
       <nav class="footer-links">
-        <a href="#/works" data-link>全部作品</a>
-        <a href="#/about" data-link>关于汤一白</a>
-        <a href="#/contact" data-link>联系我们</a>
-        <a href="/admin" target="_blank">后台</a>
+        <a href="#/works" data-link data-text="footer.links.works">All Works</a>
+        <a href="#/about" data-link data-text="footer.links.about">About</a>
+        <a href="#/contact" data-link data-text="footer.links.contact">Contact</a>
+        <a href="/admin" target="_blank" data-text="footer.links.admin">Admin</a>
       </nav>
       <span class="footer-sep" aria-hidden="true">·</span>
-      <p class="footer-copy">© <span id="year"></span> 保留所有权利</p>
+      <p class="footer-copy" data-text="footer.copyright">© <span id="year"></span> All Rights Reserved</p>
     </div>
   </footer>
 

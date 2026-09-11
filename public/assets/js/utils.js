@@ -17,7 +17,7 @@ window.Utils = (function () {
     },
 
     placeholderImage(text) {
-      text = text || '加载中';
+      text = text || 'Loading...';
       const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000">' +
         '<rect width="800" height="1000" fill="#f5f5f7"/>' +
         '<text x="400" y="500" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#86868b">' + text + '</text>' +
@@ -28,15 +28,15 @@ window.Utils = (function () {
     formatDate(iso) {
       if (!iso) return '';
       try {
-        return new Date(iso).toLocaleDateString('zh-CN', {
+        return new Date(iso).toLocaleDateString('en-US', {
           year: 'numeric', month: 'long', day: 'numeric'
         });
       } catch (e) { return iso; }
     },
 
     getCategoryLabel(key) {
-      const c = window.CATEGORIES.find(x => x.key === key);
-      return c ? c.label : key;
+      if (typeof key === 'string' && key) return window.T('category.' + key, key);
+      return key;
     },
 
     toast(message, type, duration) {
@@ -86,14 +86,7 @@ window.Utils = (function () {
   };
 })();
 
-// 分类字典
+// 分类字典（label 由 T('category.' + key) 动态取，见 site_content 表）
 window.CATEGORIES = [
-  { key: 'all',        label: '全部' },
-  { key: 'oil',        label: '油画' },
-  { key: 'watercolor', label: '水彩' },
-  { key: 'sketch',     label: '素描' },
-  { key: 'ink',        label: '国画' },
-  { key: 'digital',    label: '数字艺术' },
-  { key: 'photograph', label: '摄影' },
-  { key: 'other',      label: '其他' }
+  'all', 'oil', 'watercolor', 'sketch', 'ink', 'digital', 'photograph', 'other'
 ];

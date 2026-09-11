@@ -31,7 +31,7 @@ export async function onRequest({ request, env }) {
 
   try {
     const rows = await env.DB.prepare(
-      `SELECT id, title, slug, description, images, category, year, medium, dimensions,
+      `SELECT id, title, description, images, category, year, medium, dimensions,
               published, featured, sort_order, views, created_at, updated_at
        FROM artworks
        ${where}
