@@ -44,8 +44,8 @@ window.Views = (function () {
         featured = results[1].artworks || [];
       } catch (e) { console.warn('home load failed:', e); }
 
-      const artistName = (artist && artist.name) || 'Tang Yibai';
-      const bioShort = (artist && artist.bio_short) || 'Using color and line to tell the story of every moment.';
+      // 英文站点：优先取 name_en，避免 fallback 中英混合
+      const artistName = (artist && (artist.name_en || artist.name)) || 'Tang Yibai';
 
       let featuredHtml = '';
       if (featured.length) {
@@ -59,7 +59,7 @@ window.Views = (function () {
               '<div class="gallery" id="featured-gallery">' +
                 Views._renderGallery(featured) +
               '</div>' +
-              '<div style="text-align:center;margin-top:48px;">' +
+              '<div style="text-align:center;margin-top:48px%;">' +
                 '<a href="#/works" class="btn btn-primary">' + U.escapeHtml(T('featured.viewAll', 'View All Works →')) + '</a>' +
               '</div>' +
             '</div>' +
@@ -68,7 +68,7 @@ window.Views = (function () {
 
       return '<section class="hero container reveal">' +
              '<span class="hero-eyebrow">' + U.escapeHtml(T('hero.eyebrow', artistName + ' · Art Portfolio')) + '</span>' +
-             '<h1 class="hero-title">' + U.escapeHtml(bioShort) + '</h1>' +
+             '<h1 class="hero-title">' + U.escapeHtml(T('hero.title', artistName)) + '</h1>' +
              '<p class="hero-subtitle">' + U.escapeHtml(T('hero.subtitle', 'Painting as the confession of the soul — stories told through color and line.')) + '</p>' +
              '<div class="hero-cta">' +
                '<a href="#/works" class="btn btn-primary">' + U.escapeHtml(T('hero.cta.primary', 'Browse Works')) + '</a>' +

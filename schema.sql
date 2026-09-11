@@ -108,10 +108,11 @@ INSERT OR IGNORE INTO site_content (key, value) VALUES
 ('site.logo',           'Tang Yibai'),
 
 -- 首页 Hero
-('hero.eyebrow',       'Tang Yibai · Art Portfolio'),
-('hero.subtitle',      'Painting as the confession of the soul — stories told through color and line.'),
-('hero.cta.primary',   'Browse Works'),
-('hero.cta.secondary', 'Meet the Artist'),
+('hero.title',        'Tang Yibai'),
+('hero.eyebrow',      'Tang Yibai · Art Portfolio'),
+('hero.subtitle',     'Painting as the confession of the soul — stories told through color and line.'),
+('hero.cta.primary',  'Browse Works'),
+('hero.cta.secondary','Meet the Artist'),
 
 -- 首页 Featured 区块
 ('featured.title',    'Featured Works'),

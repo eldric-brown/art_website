@@ -407,7 +407,8 @@
       'site.title', 'site.description', 'site.og_description', 'site.logo'
     ]},
     { title: '首页 Hero 与 Featured', keys: [
-      'hero.eyebrow', 'hero.subtitle', 'hero.cta.primary', 'hero.cta.secondary',
+      'hero.title', 'hero.eyebrow', 'hero.subtitle',
+      'hero.cta.primary', 'hero.cta.secondary',
       'featured.title', 'featured.subtitle', 'featured.viewAll'
     ]},
     { title: '作品列表与分类', keys: [
