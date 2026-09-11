@@ -59,7 +59,7 @@ window.Views = (function () {
               '<div class="gallery" id="featured-gallery">' +
                 Views._renderGallery(featured) +
               '</div>' +
-              '<div style="text-align:center;margin-top:48px%;">' +
+              '<div style="text-align:center;margin-top:48px;">' +
                 '<a href="#/works" class="btn btn-primary">' + U.escapeHtml(T('featured.viewAll', 'View All Works →')) + '</a>' +
               '</div>' +
             '</div>' +
