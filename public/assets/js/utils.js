@@ -8,7 +8,9 @@ window.State = {
   category: 'all',
   currentId: null,
   content: {},
-  contentReady: null
+  contentReady: null,
+  categories: null,        // 栏目列表缓存：[{key, name, image, sort_order}]
+  categoriesReady: null    // Promise 缓存，避免并发重复请求
 };
 
 // T(key, fallback)：优先从 State.content 取；无 key 时返回 fallback 或空串
@@ -66,6 +68,17 @@ window.Utils = (function () {
       return key;
     },
 
+    // 栏目名：优先取后台配置的 categories 表，取不到再回退 site_content 的 category.<key>
+    categoryName(key, items) {
+      const list = items || window.State.categories || [];
+      for (let i = 0; i < list.length; i++) {
+        if (list[i].key === key) {
+          return list[i].name || window.T('category.' + key, key);
+        }
+      }
+      return window.T('category.' + key, key);
+    },
+
     toast(message, type, duration) {
       type = type || 'info';
       duration = duration || 2500;
@@ -113,7 +126,39 @@ window.Utils = (function () {
   };
 })();
 
-// 分类字典（label 由 T('category.' + key) 动态取，见 site_content 表）
+// 内置分类兜底：栏目表为空或 /api/categories 失败时，前台筛选与后台写入仍可用
 window.CATEGORIES = [
   'all', 'oil', 'watercolor', 'sketch', 'ink', 'digital', 'photograph', 'other'
 ];
+
+// 加载栏目列表（带缓存 + 失败兜底）
+// 返回 [{ key, name, image, sort_order }]，后台已按 sort_order 降序排好
+window.loadCategories = function () {
+  if (window.State.categoriesReady) return window.State.categoriesReady;
+
+  window.State.categoriesReady = window.API.listCategories()
+    .then(function (data) {
+      const raw = (data && data.categories) || [];
+      window.State.categories = raw.map(function (item) {
+        const key = String(item.key || '');
+        return {
+          key: key,
+          name: item.name || window.T('category.' + key, key),
+          image: String(item.image || ''),
+          sort_order: Number(item.sort_order) || 0
+        };
+      });
+      return window.State.categories;
+    })
+    .catch(function (error) {
+      console.warn('categories load failed, using built-in fallback:', error);
+      window.State.categories = window.CATEGORIES
+        .filter(function (key) { return key !== 'all'; })
+        .map(function (key) {
+          return { key: key, name: window.T('category.' + key, key), image: '', sort_order: 0 };
+        });
+      return window.State.categories;
+    });
+
+  return window.State.categoriesReady;
+};

@@ -12,7 +12,8 @@ window.Router = (function () {
     { pattern: /^#\/works$/,       handler: function () { return V.works(); } },
     { pattern: /^#\/works\/(.+)$/, handler: function (m) { return V.artworkDetail(m[1]); } },
     { pattern: /^#\/about$/,       handler: function () { return V.about(); } },
-    { pattern: /^#\/contact$/,     handler: function () { return V.contact(); } }
+    { pattern: /^#\/contact$/,     handler: function () { return V.contact(); } },
+    { pattern: /^#\/meetup$/,      handler: function () { return V.meetup(); } }
   ];
 
   return {
@@ -55,8 +56,8 @@ window.Router = (function () {
     },
 
     _bindEvents: function () {
-      // 分类筛选
-      document.querySelectorAll('.filter-btn').forEach(function (btn) {
+      // 分类筛选（作品页栏目瓦片，data-category 取后台 categories 表的 key）
+      document.querySelectorAll('.category-tile').forEach(function (btn) {
         btn.onclick = function () {
           window.State.category = btn.dataset.category;
           window.Router.navigate();

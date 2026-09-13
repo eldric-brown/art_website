@@ -15,6 +15,8 @@
         <span>艺术家后台</span>
       </div>
       <a href="#" class="admin-nav-link active" data-tab="works">🎨 作品管理</a>
+      <a href="#" class="admin-nav-link" data-tab="categories">🗂 栏目管理</a>
+      <a href="#" class="admin-nav-link" data-tab="meetup">📍 线下交流</a>
       <a href="#" class="admin-nav-link" data-tab="about">👤 艺术家资料</a>
       <a href="#" class="admin-nav-link" data-tab="content">📝 站点文案</a>
       <a href="/" class="admin-nav-link" target="_blank">🌐 查看前台</a>
@@ -44,6 +46,41 @@
         </div>
 
         <div id="artwork-list-container">
+          <div class="admin-empty"><h3>加载中……</h3></div>
+        </div>
+      </section>
+
+      <!-- 栏目管理 tab -->
+      <section id="tab-categories" hidden>
+        <div class="admin-header">
+          <h1>栏目管理</h1>
+          <div class="admin-header-actions">
+            <button class="btn btn-primary" id="btn-new-category">＋ 新建栏目</button>
+            <button class="btn" id="btn-refresh-categories">刷新</button>
+          </div>
+        </div>
+        <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:16px;">
+          栏目即前台作品页的图片瓦片。key 建后不可修改（作品表引用它）；停用后前台隐藏，已有作品的分类引用仍保留。
+        </p>
+        <div id="category-list-container">
+          <div class="admin-empty"><h3>加载中……</h3></div>
+        </div>
+      </section>
+
+      <!-- 线下交流 tab -->
+      <section id="tab-meetup" hidden>
+        <div class="admin-header">
+          <h1>线下交流</h1>
+          <div class="admin-header-actions">
+            <button class="btn btn-primary" id="btn-add-meetup">＋ 添加条目</button>
+            <button class="btn btn-primary" id="btn-save-meetup">💾 保存</button>
+            <button class="btn" id="btn-refresh-meetup">刷新</button>
+          </div>
+        </div>
+        <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:16px;">
+          条目按 sort_order 从大到小排列（越大越靠前）。日期与地点为自由文本，图片留空则前台只显示文字。
+        </p>
+        <div id="meetup-list-container">
           <div class="admin-empty"><h3>加载中……</h3></div>
         </div>
       </section>
@@ -132,8 +169,8 @@
 
         <div class="field-row">
           <div class="field-group field">
-            <label>分类</label>
-            <select name="category">
+            <label>分类（来自「栏目管理」）</label>
+            <select name="category" id="category-select">
               <option value="oil">油画</option>
               <option value="watercolor">水彩</option>
               <option value="sketch">素描</option>
@@ -164,6 +201,20 @@
           <div class="field-group field">
             <label>尺寸</label>
             <input type="text" name="dimensions" placeholder="如：60 x 80 cm">
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field-group field">
+            <label>价格（留空则前台不显示）</label>
+            <input type="text" name="price" placeholder="如：USD 1,200">
+          </div>
+          <div class="field-group field">
+            <label>售出状态</label>
+            <select name="sold">
+              <option value="0">在售</option>
+              <option value="1">✅ 已售（前台打 Sold 标签）</option>
+            </select>
           </div>
         </div>
 

@@ -35,11 +35,29 @@ export function safeParseJSON(value, fallback) {
   }
 }
 
+// 读取后台配置的启用栏目 key，用于作品分类白名单校验。
+// 栏目表为空或查询失败时回退到内置集合，避免空库把后台写入锁死。
+export async function loadAllowedCategories(env) {
+  if (!env || !env.DB) return [...CATEGORY_KEYS];
+  try {
+    const { results } = await env.DB.prepare(
+      'SELECT key FROM categories WHERE enabled = 1 ORDER BY sort_order DESC, id ASC'
+    ).all();
+    const keys = results
+      .map((row) => row.key)
+      .filter((key) => typeof key === 'string' && key.length > 0);
+    return keys.length > 0 ? keys : [...CATEGORY_KEYS];
+  } catch {
+    return [...CATEGORY_KEYS];
+  }
+}
+
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object, key);
 }
 
-function isAllowedImageUrl(value) {
+export function isAllowedImageUrl(value, { allowEmpty = false } = {}) {
+  if (allowEmpty && value === '') return true;
   if (typeof value !== 'string' || value.length > 2048) return false;
   if (/^\/r2\/artworks\/[A-Za-z0-9._/-]+$/.test(value) && !value.includes('..')) {
     return true;
@@ -66,6 +84,11 @@ export function validateArtworkPayload(body, options = {}) {
   const partial = options.partial === true;
   const errors = [];
   const data = {};
+
+  // 分类白名单：优先用后台配置的启用栏目；未传则用内置兜底集合。
+  const allowedCategories = options.allowedCategories
+    ? new Set(Array.isArray(options.allowedCategories) ? options.allowedCategories : [])
+    : CATEGORY_KEYS;
 
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return { errors: ['请求体必须是 JSON 对象'], data };
@@ -105,14 +128,16 @@ export function validateArtworkPayload(body, options = {}) {
   optionalString('description', 10000, 'description');
   optionalString('medium', 200, 'medium');
   optionalString('dimensions', 200, 'dimensions');
+  optionalString('price', 100, 'price');
 
   if (!partial && !hasOwn(body, 'description')) data.description = '';
   if (!partial && !hasOwn(body, 'medium')) data.medium = '';
   if (!partial && !hasOwn(body, 'dimensions')) data.dimensions = '';
+  if (!partial && !hasOwn(body, 'price')) data.price = '';
 
   if (!partial || hasOwn(body, 'category')) {
     const category = body.category ?? 'other';
-    if (typeof category !== 'string' || !CATEGORY_KEYS.has(category)) {
+    if (typeof category !== 'string' || !allowedCategories.has(category)) {
       errors.push('category 不在允许的分类中');
     } else {
       data.category = category;
@@ -145,9 +170,11 @@ export function validateArtworkPayload(body, options = {}) {
 
   data.published = normalizeFlag(body.published, partial ? undefined : 0, 'published', errors);
   data.featured = normalizeFlag(body.featured, partial ? undefined : 0, 'featured', errors);
+  data.sold = normalizeFlag(body.sold, partial ? undefined : 0, 'sold', errors);
 
   if (data.published === undefined) delete data.published;
   if (data.featured === undefined) delete data.featured;
+  if (data.sold === undefined) delete data.sold;
 
   if (!partial || hasOwn(body, 'sort_order')) {
     const sortOrder = body.sort_order ?? 0;

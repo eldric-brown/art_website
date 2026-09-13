@@ -74,7 +74,9 @@
     artworks: [],
     editingId: null,
     uploadedUrls: [],
-    contentOriginal: {}
+    contentOriginal: {},
+    categories: [],
+    meetups: []
   };
 
   // ---------- 作品列表 ----------
@@ -189,6 +191,7 @@
     form.querySelector('[name=year]').value = new Date().getFullYear();
     form.querySelector('[name=published]').value = '1';
     form.querySelector('[name=featured]').value = '0';
+    form.querySelector('[name=sold]').value = '0';
     form.querySelector('[name=sort_order]').value = '0';
     document.getElementById('modal-title').textContent = '新建作品';
     document.getElementById('preview-list').innerHTML = '';
@@ -214,6 +217,8 @@
     form.querySelector('[name=published]').value = String(artwork.published || 0);
     form.querySelector('[name=featured]').value = String(artwork.featured || 0);
     form.querySelector('[name=sort_order]').value = artwork.sort_order || '0';
+    form.querySelector('[name=price]').value = artwork.price || '';
+    form.querySelector('[name=sold]').value = String(artwork.sold || 0);
 
     document.getElementById('modal-title').textContent = '编辑作品';
     renderPreviewList();
@@ -315,6 +320,8 @@
       published: parseInt(fd.get('published'), 10),
       featured: parseInt(fd.get('featured'), 10),
       sort_order: parseInt(fd.get('sort_order') || '0', 10),
+      price: (fd.get('price') || '').trim(),
+      sold: parseInt(fd.get('sold') || '0', 10),
       images: state.uploadedUrls
     };
 
@@ -403,13 +410,20 @@
   // 前端所有 key 按分组显示，方便批量编辑
   const CONTENT_GROUPS = [
     { title: '导航与站点元信息', keys: [
-      'nav.home', 'nav.works', 'nav.about', 'nav.contact',
+      'nav.home', 'nav.works', 'nav.about', 'nav.meetup', 'nav.contact',
       'site.title', 'site.description', 'site.og_description', 'site.logo'
     ]},
-    { title: '首页 Hero 与 Featured', keys: [
+    { title: '首页 Hero 横图（三段式第一屏）', keys: [
+      'home.hero.image', 'home.hero.title', 'home.hero.subtitle', 'home.hero.cta',
       'hero.title', 'hero.eyebrow', 'hero.subtitle',
-      'hero.cta.primary', 'hero.cta.secondary',
+      'hero.cta.primary', 'hero.cta.secondary'
+    ]},
+    { title: '首页 Selected Works（第二屏）', keys: [
+      'home.features.title', 'home.features.subtitle', 'home.features.viewAll',
       'featured.title', 'featured.subtitle', 'featured.viewAll'
+    ]},
+    { title: '首页入口卡（第三屏）', keys: [
+      'home.entry.works.desc', 'home.entry.about.desc', 'home.entry.meetup.desc'
     ]},
     { title: '作品列表与分类', keys: [
       'works.title', 'works.subtitle', 'works.empty.title', 'works.empty.subtitle',
@@ -420,16 +434,21 @@
       'detail.back', 'detail.backBottom',
       'detail.meta.category', 'detail.meta.year', 'detail.meta.medium',
       'detail.meta.dimensions', 'detail.meta.published',
-      'detail.notFound.title', 'detail.notFound.subtitle', 'detail.noImages'
+      'detail.notFound.title', 'detail.notFound.subtitle', 'detail.noImages',
+      'work.sold', 'work.price'
     ]},
     { title: '关于与联系', keys: [
       'about.unavailable',
       'contact.title', 'contact.subtitle',
       'contact.email.label', 'contact.wechat.label', 'contact.note', 'contact.empty'
     ]},
+    { title: '线下交流页', keys: [
+      'meetup.title', 'meetup.subtitle', 'meetup.intro',
+      'meetup.item.date', 'meetup.item.location', 'meetup.empty'
+    ]},
     { title: '页脚', keys: [
       'footer.brand', 'footer.links.works', 'footer.links.about',
-      'footer.links.contact', 'footer.links.admin', 'footer.copyright'
+      'footer.links.contact', 'footer.links.meetup', 'footer.links.admin', 'footer.copyright'
     ]},
     { title: '通用状态', keys: [
       'common.loading', 'common.thumbnail',
@@ -502,6 +521,249 @@
     }
   }
 
+  // ---------- 栏目管理 ----------
+  // 回填作品表单的分类下拉：只列已启用栏目，停用栏目保留但禁用（老作品仍可编辑）
+  async function loadCategoryOptions() {
+    try {
+      const data = await api('/api/admin/categories');
+      const select = document.getElementById('category-select');
+      if (!select) return;
+      const list = (data && data.categories) || [];
+      if (!list.length) return;
+      select.innerHTML = list.map(function (c) {
+        return '<option value="' + escapeHtml(c.key) + '"' + (c.enabled ? '' : ' disabled') + '>' +
+          escapeHtml(c.name) + (c.enabled ? '' : '（已停用）') + '</option>';
+      }).join('');
+    } catch (e) {
+      console.warn('load category options failed:', e);
+    }
+  }
+
+  async function loadCategories() {
+    const container = document.getElementById('category-list-container');
+    container.innerHTML = '<div class="admin-empty"><h3>加载中……</h3></div>';
+    try {
+      const data = await api('/api/admin/categories');
+      state.categories = (data && data.categories) || [];
+      renderCategories();
+    } catch (e) {
+      container.innerHTML = '<div class="admin-empty"><h3>加载失败</h3><p>' + escapeHtml(e.message) + '</p></div>';
+    }
+  }
+
+  function renderCategories() {
+    const container = document.getElementById('category-list-container');
+    const list = state.categories;
+
+    const rows = list.length ? list.map(function (c) {
+      const badge = c.enabled
+        ? '<span class="badge badge-success">启用</span>'
+        : '<span class="badge badge-secondary">停用</span>';
+      return '<fieldset style="border:1px solid var(--color-border);border-radius:8px;padding:12px 16px;margin-bottom:14px;">' +
+        '<legend style="font-weight:600;padding:0 6px;">' + escapeHtml(c.name) +
+          ' · <code style="font-size:12px;">' + escapeHtml(c.key) + '</code> · ' +
+          '<span style="font-weight:400;color:var(--color-text-secondary);">' + (c.artwork_count || 0) + ' 件作品</span>' +
+        '</legend>' +
+        '<div class="field-row" style="display:grid;grid-template-columns:2fr 2fr 1fr 1fr;gap:12px;margin-bottom:10px;">' +
+          '<div class="field-group field"><label>名称（英文）</label><input type="text" data-field="name" data-cat-id="' + c.id + '" value="' + escapeHtml(c.name) + '"></div>' +
+          '<div class="field-group field"><label>底图 URL</label><input type="text" data-field="image" data-cat-id="' + c.id + '" value="' + escapeHtml(c.image || '') + '" placeholder="https:// 或 /r2/artworks/..."></div>' +
+          '<div class="field-group field"><label>排序权重</label><input type="number" data-field="sort_order" data-cat-id="' + c.id + '" value="' + (c.sort_order || 0) + '"></div>' +
+          '<div class="field-group field"><label>状态</label><select data-field="enabled" data-cat-id="' + c.id + '"><option value="1"' + (c.enabled ? ' selected' : '') + '>启用</option><option value="0"' + (!c.enabled ? ' selected' : '') + '>停用</option></select></div>' +
+        '</div>' +
+        '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">' + badge +
+          '<button class="btn btn-sm btn-primary" data-action="save-category" data-id="' + c.id + '">保存</button>' +
+          '<button class="btn btn-sm" data-action="disable-category" data-id="' + c.id + '">' + (c.enabled ? '停用' : '启用') + '</button>' +
+          '<button class="btn btn-sm btn-danger" data-action="del-category" data-id="' + c.id + '">彻底删除</button>' +
+        '</div>' +
+      '</fieldset>';
+    }).join('') : '<div class="admin-empty"><h3>暂无栏目</h3><p>用上方表单新建</p></div>';
+
+    container.innerHTML = newCategoryFieldsetHtml() + rows;
+
+    $$('[data-action]', container).forEach(function (btn) {
+      btn.onclick = function () {
+        const id = parseInt(btn.dataset.id, 10);
+        const action = btn.dataset.action;
+        if (action === 'save-category') saveCategory(id);
+        else if (action === 'disable-category') toggleCategory(id);
+        else if (action === 'del-category') deleteCategory(id);
+      };
+    });
+    $('#btn-create-category').onclick = createCategory;
+  }
+
+  function newCategoryFieldsetHtml() {
+    return '<fieldset style="border:2px dashed var(--color-border);border-radius:8px;padding:12px 16px;margin-bottom:16px;">' +
+      '<legend style="font-weight:600;padding:0 6px;">＋ 新建栏目</legend>' +
+      '<div class="field-row" style="display:grid;grid-template-columns:1fr 1fr 1.4fr 0.8fr;gap:12px;margin-bottom:10px;">' +
+        '<div class="field-group field"><label>key *（建后不可改）</label><input type="text" id="new-cat-key" placeholder="小写字母/数字/_"></div>' +
+        '<div class="field-group field"><label>名称 *（英文）</label><input type="text" id="new-cat-name" placeholder="如：Etching"></div>' +
+        '<div class="field-group field"><label>底图 URL</label><input type="text" id="new-cat-image" placeholder="可选"></div>' +
+        '<div class="field-group field"><label>排序权重</label><input type="number" id="new-cat-sort" value="0"></div>' +
+      '</div>' +
+      '<button class="btn btn-primary" id="btn-create-category">创建</button>' +
+    '</fieldset>';
+  }
+
+  async function createCategory() {
+    const key = ($('#new-cat-key').value || '').trim();
+    const name = ($('#new-cat-name').value || '').trim();
+    const image = ($('#new-cat-image').value || '').trim();
+    const sort_order = parseInt($('#new-cat-sort').value || '0', 10);
+    if (!key) { toast('请填写 key', 'error'); return; }
+    if (!name) { toast('请填写名称', 'error'); return; }
+    try {
+      await api('/api/admin/categories', {
+        method: 'POST',
+        body: JSON.stringify({ key: key, name: name, image: image, sort_order: sort_order })
+      });
+      toast('已创建', 'success');
+      await Promise.all([loadCategories(), loadCategoryOptions()]);
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  }
+
+  async function saveCategory(id) {
+    const patch = {};
+    $$('[data-cat-id="' + id + '"]').forEach(function (el) {
+      const field = el.dataset.field;
+      patch[field] = (field === 'sort_order' || field === 'enabled')
+        ? parseInt(el.value, 10)
+        : el.value.trim();
+    });
+    if (Object.keys(patch).length === 0) return;
+    try {
+      await api('/api/admin/categories/' + id, {
+        method: 'PATCH',
+        body: JSON.stringify(patch)
+      });
+      toast('已保存', 'success');
+      await Promise.all([loadCategories(), loadCategoryOptions()]);
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  }
+
+  async function toggleCategory(id) {
+    const cat = state.categories.find(c => c.id === id);
+    if (!cat) return;
+    try {
+      await api('/api/admin/categories/' + id, {
+        method: 'PATCH',
+        body: JSON.stringify({ enabled: cat.enabled ? 0 : 1 })
+      });
+      toast(cat.enabled ? '已停用' : '已启用', 'success');
+      await Promise.all([loadCategories(), loadCategoryOptions()]);
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  }
+
+  async function deleteCategory(id) {
+    const cat = state.categories.find(c => c.id === id);
+    const count = cat ? (cat.artwork_count || 0) : 0;
+    const msg = count > 0
+      ? '该栏目下还有 ' + count + ' 件作品引用，后端会拒绝删除。请先把作品改到其他栏目。\n\n仍要尝试吗？'
+      : '彻底删除栏目「' + (cat ? cat.name : '') + '」？此操作不可恢复。';
+    if (!confirm(msg)) return;
+    try {
+      await api('/api/admin/categories/' + id, { method: 'DELETE' });
+      toast('已删除', 'success');
+      await Promise.all([loadCategories(), loadCategoryOptions()]);
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  }
+
+  // ---------- 线下交流 ----------
+  // 前端一次性编辑所有条目，PUT 整体替换（后端在单个 batch 事务里删旧插新）
+  async function loadMeetups() {
+    const container = document.getElementById('meetup-list-container');
+    container.innerHTML = '<div class="admin-empty"><h3>加载中……</h3></div>';
+    try {
+      const data = await api('/api/admin/meetup');
+      state.meetups = (data && data.items) || [];
+      renderMeetups();
+    } catch (e) {
+      container.innerHTML = '<div class="admin-empty"><h3>加载失败</h3><p>' + escapeHtml(e.message) + '</p></div>';
+    }
+  }
+
+  function meetupRowHtml(item, index) {
+    item = item || {};
+    return '<fieldset style="border:1px solid var(--color-border);border-radius:8px;padding:12px 16px;margin-bottom:14px;">' +
+      '<legend style="font-weight:600;padding:0 6px;">第 ' + (index + 1) + ' 条 · ' +
+        (item.id ? '#' + item.id : '新增') + '</legend>' +
+      '<div class="field-row" style="display:grid;grid-template-columns:1fr 0.7fr 0.7fr;gap:12px;margin-bottom:10px;">' +
+        '<div class="field-group field"><label>标题 *</label><input type="text" data-m="title" value="' + escapeHtml(item.title || '') + '" placeholder="如：春季小型个展"></div>' +
+        '<div class="field-group field"><label>日期 / 时间</label><input type="text" data-m="date_text" value="' + escapeHtml(item.date_text || '') + '" placeholder="如：2026.05.10 - 05.18"></div>' +
+        '<div class="field-group field"><label>地点</label><input type="text" data-m="location" value="' + escapeHtml(item.location || '') + '" placeholder="如：上海 · 徐汇滨江"></div>' +
+      '</div>' +
+      '<div class="field-row" style="display:grid;grid-template-columns:2fr 0.7fr 90px;gap:12px;">' +
+        '<div class="field-group field"><label>图片 URL</label><input type="text" data-m="image" value="' + escapeHtml(item.image || '') + '" placeholder="留空则前台只显示文字"></div>' +
+        '<div class="field-group field"><label>排序权重</label><input type="number" data-m="sort_order" value="' + (item.sort_order || 0) + '"></div>' +
+        '<div class="field-group field" style="align-self:end;">' +
+          '<button type="button" class="btn btn-sm btn-danger" data-action="del-meetup">移除</button>' +
+        '</div>' +
+      '</div>' +
+    '</fieldset>';
+  }
+
+  function renderMeetups() {
+    const container = document.getElementById('meetup-list-container');
+    if (!state.meetups.length) {
+      container.innerHTML = '<div class="admin-empty"><h3>暂无条目</h3><p>点上方「＋ 添加条目」新建</p></div>';
+      return;
+    }
+    container.innerHTML = state.meetups.map(meetupRowHtml).join('');
+    $$('[data-action="del-meetup"]', container).forEach(function (btn) {
+      btn.onclick = function () {
+        btn.closest('fieldset').remove();
+      };
+    });
+  }
+
+  function addMeetupRow() {
+    state.meetups.push({ title: '', date_text: '', location: '', image: '', sort_order: 0 });
+    renderMeetups();
+  }
+
+  async function saveMeetups() {
+    const container = document.getElementById('meetup-list-container');
+    const items = Array.from(container.querySelectorAll('fieldset')).map(function (row) {
+      const pick = function (name) {
+        const el = row.querySelector('[data-m="' + name + '"]');
+        return el ? el.value.trim() : '';
+      };
+      return {
+        title: pick('title'),
+        date_text: pick('date_text'),
+        location: pick('location'),
+        image: pick('image'),
+        sort_order: parseInt(pick('sort_order') || '0', 10)
+      };
+    });
+
+    if (!items.length) { toast('请先添加条目', 'error'); return; }
+    if (items.some(function (it) { return !it.title; })) {
+      toast('每条都必须填写标题', 'error');
+      return;
+    }
+
+    try {
+      const data = await api('/api/admin/meetup', {
+        method: 'PUT',
+        body: JSON.stringify({ items: items })
+      });
+      state.meetups = (data && data.items) || [];
+      toast('已保存 ' + items.length + ' 条', 'success');
+      renderMeetups();
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  }
+
   // ---------- Tab 切换 ----------
   function setupTabs() {
     $$('.admin-nav-link[data-tab]').forEach(function (link) {
@@ -514,6 +776,8 @@
         $('#tab-' + tab).hidden = false;
         if (tab === 'about') loadArtist();
         if (tab === 'content') loadSiteContent();
+        if (tab === 'categories') loadCategories();
+        if (tab === 'meetup') loadMeetups();
       };
     });
   }
@@ -550,6 +814,13 @@
     $('#btn-reset-artist').onclick = loadArtist;
     $('#btn-save-content').onclick = saveSiteContent;
     $('#btn-reset-content').onclick = loadSiteContent;
+    $('#btn-refresh-categories').onclick = loadCategories;
+    $('#btn-add-meetup').onclick = addMeetupRow;
+    $('#btn-save-meetup').onclick = saveMeetups;
+    $('#btn-refresh-meetup').onclick = loadMeetups;
+
+    // 作品表单的分类下拉改为读后台栏目表（失败时保留 HTML 里的静态选项）
+    loadCategoryOptions();
 
     let searchTimer;
     $('#search-input').oninput = function () {

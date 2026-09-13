@@ -1,4 +1,9 @@
-import { json, methodNotAllowed, safeParseJSON } from '../_lib/http.js';
+import {
+  json,
+  loadAllowedCategories,
+  methodNotAllowed,
+  safeParseJSON
+} from '../_lib/http.js';
 
 function parseBoundedInt(value, fallback, minimum, maximum) {
   const parsed = Number.parseInt(value ?? '', 10);
@@ -24,6 +29,11 @@ export async function onRequest({ request, env }) {
     if (category.length > 50) {
       return json({ ok: false, error: 'invalid_category' }, 400);
     }
+    // 只接受后台启用中的栏目，停用/删除后对应筛选不再命中。
+    const allowedCategories = await loadAllowedCategories(env);
+    if (!allowedCategories.includes(category)) {
+      return json({ ok: false, error: 'invalid_category' }, 400);
+    }
     conditions.push('category = ?');
     bindValues.push(category);
   }
@@ -39,7 +49,7 @@ export async function onRequest({ request, env }) {
 
     const rows = await env.DB.prepare(
       `SELECT id, title, description, images, category, year, medium, dimensions,
-              featured, sort_order, created_at
+              featured, sort_order, sold, price, created_at
        FROM artworks
        ${whereClause}
        ORDER BY sort_order DESC, year DESC, id DESC

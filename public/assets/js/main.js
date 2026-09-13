@@ -48,7 +48,8 @@ function applyChromeTexts(content) {
     const path = location.pathname.replace(/\/+$/, '') || '/';
     const pathMap = {
       '/about': '#/about',
-      '/contact': '#/contact'
+      '/contact': '#/contact',
+      '/meetup': '#/meetup'
     };
 
     if (!location.hash && pathMap[path]) {
@@ -81,8 +82,8 @@ function applyChromeTexts(content) {
 
     if (!location.hash) history.replaceState(null, '', '#/');
 
-    // 先加载站点文案，再启动路由；导航/页脚/页面文案统一从 DB 取
-    loadSiteContent().then(function () {
+    // 先加载站点文案与栏目配置，再启动路由；导航/页脚/栏目名统一从 DB 取
+    Promise.all([loadSiteContent(), window.loadCategories()]).then(function () {
       applySiteMeta(window.State.content);
       applyChromeTexts(window.State.content);
       window.Router.navigate();
