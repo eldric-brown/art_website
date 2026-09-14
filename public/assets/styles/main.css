@@ -528,7 +528,7 @@ ul { list-style: none; }
 .footer {
   border-top: 1px solid var(--color-border);
   background: var(--color-bg-alt);
-  padding: var(--space-lg) 0;
+  padding: var(--space-sm) 0;
 }
 
 .footer-inner {
@@ -578,6 +578,8 @@ ul { list-style: none; }
   color: var(--color-border);
   user-select: none;
 }
+
+.footer-links a[href="/admin"] { display: none; }
 
 /* ---- 13. 滚动动画 ---- */
 .reveal {
@@ -1135,6 +1137,19 @@ ul { list-style: none; }
 
 
 /* ---- 21. 首页 Artvee 风格三段式 ---- */
+/* Homepage: whole page scrolls so nav/logo scroll with content */
+body[data-view="home"] {
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: auto;
+  min-height: 100vh;
+}
+body[data-view="home"] #app {
+  overflow: visible;
+  flex: 0 0 auto;
+}
+
 body[data-view="home"] .nav-links { display: none; }
 body[data-view="home"] .nav-inner {
   justify-content: flex-start;

@@ -14,8 +14,6 @@
 --   npx wrangler@latest d1 execute art-website-db --remote --file=./init.sql
 -- ============================================================
 
-PRAGMA foreign_keys=OFF;
-BEGIN TRANSACTION;
 
 DROP TABLE IF EXISTS view_logs;
 DROP TABLE IF EXISTS artworks;
@@ -25,7 +23,6 @@ DROP TABLE IF EXISTS categories;
 DROP TABLE IF EXISTS meetup_items;
 DROP TABLE IF EXISTS users;
 
-PRAGMA defer_foreign_keys=TRUE;
 CREATE TABLE artworks (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     title       TEXT    NOT NULL,                    
@@ -226,11 +223,6 @@ CREATE TABLE users (
     updated_at          TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 INSERT INTO "users" ("id","username","password_hash","password_salt","password_iterations","password_algo","created_at","updated_at") VALUES(1,'admin','lgT7N58-y6l95fC5wVDdyJzdaSeBAr24qwTahy3sXD0','bPN1AEEs0nZHgpeotAczcw',210000,'PBKDF2-SHA256','2026-09-14 01:51:07','2026-09-14 02:33:59');
-DELETE FROM sqlite_sequence;
-INSERT INTO "sqlite_sequence" ("name","seq") VALUES('categories',35);
-INSERT INTO "sqlite_sequence" ("name","seq") VALUES('artworks',7);
-INSERT INTO "sqlite_sequence" ("name","seq") VALUES('meetup_items',3);
-INSERT INTO "sqlite_sequence" ("name","seq") VALUES('users',1);
 CREATE INDEX idx_artworks_published ON artworks(published, sort_order DESC);
 CREATE INDEX idx_artworks_category  ON artworks(published, category, sort_order DESC);
 CREATE INDEX idx_artworks_featured  ON artworks(featured, sort_order DESC);
@@ -263,8 +255,6 @@ FOR EACH ROW
 BEGIN
     UPDATE users SET updated_at = datetime('now') WHERE id = OLD.id;
 END;
-PRAGMA foreign_keys=ON;
-COMMIT;
 
 -- 009 迁移：站点 Logo / favicon（Artvee 默认资源）
 INSERT OR REPLACE INTO site_content (key, value) VALUES
