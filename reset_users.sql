@@ -19,11 +19,7 @@ CREATE TABLE users (
     username            TEXT    NOT NULL COLLATE NOCASE UNIQUE,
     password_hash       TEXT    NOT NULL DEFAULT '',
     password_salt       TEXT    NOT NULL DEFAULT '',
-<<<<<<< HEAD
     password_iterations INTEGER NOT NULL DEFAULT 100000,
-=======
-    password_iterations INTEGER NOT NULL DEFAULT 210000,
->>>>>>> ed1c59db16bc608dd4c6f332118edae694bb8c2c
     password_algo       TEXT    NOT NULL DEFAULT 'PBKDF2-SHA256',
     created_at          TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at          TEXT    NOT NULL DEFAULT (datetime('now'))
@@ -31,11 +27,7 @@ CREATE TABLE users (
 
 -- 插入 admin 账号：password_hash 为空，表示首次登录需设置密码
 INSERT INTO users (id, username, password_hash, password_salt, password_iterations, password_algo)
-<<<<<<< HEAD
 VALUES (1, 'admin', '', '', 100000, 'PBKDF2-SHA256');
-=======
-VALUES (1, 'admin', '', '', 210000, 'PBKDF2-SHA256');
->>>>>>> ed1c59db16bc608dd4c6f332118edae694bb8c2c
 
 -- 触发器
 DROP TRIGGER IF EXISTS trg_users_update_time;
