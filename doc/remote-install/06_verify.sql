@@ -1,1 +1,0 @@
-SELECT (SELECT COUNT(*) FROM artworks) AS artworks, (SELECT COUNT(*) FROM categories) AS categories, (SELECT COUNT(*) FROM site_content) AS content, (SELECT COUNT(*) FROM users) AS users, (SELECT COUNT(*) FROM meetup_items) AS meetups;
