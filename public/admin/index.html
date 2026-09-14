@@ -240,10 +240,14 @@
         <div class="admin-header"><h1>账号安全</h1></div>
         <div class="upload-form">
           <p class="account-meta">当前登录名：<strong id="account-username">加载中……</strong></p>
+          <div id="force-password-banner" hidden style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:16px;margin-bottom:20px;">
+            <strong>⚠️ 首次登录，请设置新密码</strong>
+            <p style="margin:8px 0 0;font-size:13px;color:var(--color-text-secondary);">当前密码可留空，只需填写新密码和确认密码。</p>
+          </div>
           <form id="password-form">
             <div class="field-group field">
               <label>当前密码</label>
-              <input type="password" name="current_password" required autocomplete="current-password">
+              <input type="password" name="current_password" autocomplete="current-password">
             </div>
             <div class="field-row">
               <div class="field-group field">

@@ -24,7 +24,7 @@ export async function onRequest({ request, env }) {
   const newPassword = body && typeof body.new_password === 'string' ? body.new_password : '';
   const errors = [];
 
-  if (!currentPassword || currentPassword.length > 512) errors.push('当前密码不能为空');
+  if (currentPassword.length > 512) errors.push('当前密码不能超过 512 位');
   if (!newPassword || newPassword.length < 8) errors.push('新密码至少需要 8 位');
   if (newPassword.length > 128) errors.push('新密码不能超过 128 位');
   if (currentPassword && newPassword && currentPassword === newPassword) errors.push('新密码不能与当前密码相同');
@@ -41,8 +41,14 @@ export async function onRequest({ request, env }) {
     ).bind(userId).first();
 
     if (!user) return json({ ok: false, error: 'unauthorized' }, 401);
-    if (!(await verifyPassword(currentPassword, user))) {
-      return json({ ok: false, error: 'invalid_password', message: '当前密码不正确' }, 401);
+    // 密码哈希为空（首次设置）：跳过当前密码校验
+    if (user.password_hash !== '') {
+      if (!currentPassword) {
+        return json({ ok: false, error: 'invalid_password', message: '当前密码不能为空' }, 422);
+      }
+      if (!(await verifyPassword(currentPassword, user))) {
+        return json({ ok: false, error: 'invalid_password', message: '当前密码不正确' }, 401);
+      }
     }
 
     const record = await createPasswordRecord(newPassword);

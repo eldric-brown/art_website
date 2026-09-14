@@ -1108,11 +1108,23 @@
   }
 
   // ---------- 账号安全 ----------
+  let mustChangePassword = false;
+
   async function loadAccount() {
     const usernameEl = $('#account-username');
     try {
       const data = await api('/api/admin/account');
       if (usernameEl) usernameEl.textContent = data.user.username;
+      mustChangePassword = Boolean(data.user.must_change_password);
+      if (mustChangePassword) {
+        const banner = document.getElementById('force-password-banner');
+        if (banner) banner.hidden = false;
+        $$('.admin-nav-link[data-tab]').forEach(l => l.classList.remove('active'));
+        const accountLink = document.querySelector('.admin-nav-link[data-tab="account"]');
+        if (accountLink) accountLink.classList.add('active');
+        $$('.admin-main section').forEach(s => s.hidden = true);
+        $('#tab-account').hidden = false;
+      }
     } catch (e) {
       if (usernameEl) usernameEl.textContent = '加载失败';
       toast(e.message, 'error');
@@ -1146,6 +1158,9 @@
       });
       form.reset();
       toast('密码修改成功', 'success');
+      mustChangePassword = false;
+      const banner = document.getElementById('force-password-banner');
+      if (banner) banner.hidden = true;
     } catch (err) {
       toast(err.message, 'error');
     }
@@ -1204,6 +1219,7 @@
     $('#status-filter').onchange = loadArtworks;
 
     loadArtworks();
+    loadAccount();
   }
 
   if (document.readyState === 'loading') {

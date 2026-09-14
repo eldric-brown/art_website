@@ -31,7 +31,7 @@ export async function onRequest({ request, env }) {
 
   const username = body && typeof body.username === 'string' ? body.username.trim() : '';
   const password = body && typeof body.password === 'string' ? body.password : '';
-  if (!username || username.length > 50 || !password || password.length > 512) {
+  if (!username || username.length > 50 || password.length > 512) {
     return invalidCredentials();
   }
 
@@ -71,6 +71,13 @@ export async function onRequest({ request, env }) {
 
       user = { id: result.meta.last_row_id, username: BOOTSTRAP_USERNAME };
       loginUsername = BOOTSTRAP_USERNAME;
+    } else if (user.password_hash === '') {
+      // 首次登录（密码哈希为空）：跳过密码校验，登录后强制改密
+      const cookie = await createSessionCookie(request, env, Number(user.id));
+      return json({
+        ok: true,
+        data: { username: loginUsername, must_change_password: true }
+      }, 200, { 'Set-Cookie': cookie });
     } else if (!(await verifyPassword(password, user))) {
       return invalidCredentials();
     }
@@ -78,7 +85,7 @@ export async function onRequest({ request, env }) {
     const cookie = await createSessionCookie(request, env, Number(user.id));
     return json({
       ok: true,
-      data: { username: loginUsername }
+      data: { username: loginUsername, must_change_password: false }
     }, 200, { 'Set-Cookie': cookie });
   } catch (error) {
     console.error('login failed:', error);
