@@ -1,214 +1,235 @@
 # 艺术家个人网站
 
-Apple 风格前台 + Cloudflare Pages Functions 后台 + D1，图片使用 HTTPS 外链。
+零构建的艺术作品集网站：原生 HTML / CSS / JavaScript 前台 + Cloudflare Pages Functions + Cloudflare D1。
 
-- 零构建：原生 HTML / CSS / JavaScript
-- 托管：Cloudflare Pages
-- 数据：Cloudflare D1
-- 图片：HTTPS 外链（后台粘贴图床直链；R2 代码保留休眠）
-- 后台：`/admin/login`
-- 前台：Hash 路由，图片和资料由 API 动态读取
+- 前台：首页、作品列表、作品详情、关于、联系、线下交流
+- 后台：作品、首页、栏目、活动、艺术家资料、站点文案、账号安全
+- 图片：支持 HTTPS 外链
+- 认证：用户表 + PBKDF2-SHA256 密码哈希 + HMAC 签名会话
+- 部署：GitHub + Cloudflare Pages + D1
 
-## 一、部署前必须完成
+## 一、GitHub + Cloudflare Pages 部署
 
-### 1. 创建 D1
+Cloudflare 已经关联 GitHub 后，建议使用下面的 Pages 设置：
+
+```text
+Framework preset：None
+Root directory：/
+Build command：留空
+Build output directory：public
+Production branch：main
+```
+
+项目没有 npm 构建步骤。Cloudflare 会直接发布 `public/`，并自动识别根目录下的 `functions/`。
+
+### 1. 创建 D1 并绑定
 
 ```powershell
 npx wrangler@latest login
 npx wrangler@latest d1 create art-website-db
 ```
 
-把命令输出的 `database_id` 写入 `wrangler.jsonc`：
+把返回的 `database_id` 写入 `wrangler.jsonc`：
 
 ```jsonc
-"database_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+"d1_databases": [
+  {
+    "binding": "DB",
+    "database_name": "art-website-db",
+    "database_id": "你的 database_id"
+  }
+]
 ```
 
-仓库里的 `database_id` 已经填入了真实值，可以直接部署。如果换成自己的数据库，记得同步更新这一项。
+在 Cloudflare Pages 项目的 Settings → Functions → D1 database bindings 中确认：
 
-### 2. 准备图片外链
-
-本站不使用 Cloudflare R2。把作品图片放到任意提供 HTTPS 直链的图床
-（GitHub raw、Gitee、imgbb、阿里云 OSS 等），在后台粘贴直链即可。
-
-使用第三方图床时的注意：
-
-- GitHub 必须使用 `raw.githubusercontent.com` 域名，且图片对所有人公开可见。
-- 图片地址变更或删除会导致前台失效，作品图片建议集中管理。
-
-`functions/api/admin/upload.js` 与 `functions/r2/[[key]].js` 代码保留休眠，
-日后恢复 R2 只需在 `wrangler.jsonc` 加回 `r2_buckets` 并重新部署。
-
-### 3. 初始化线上数据库
-
-```powershell
-npx wrangler@latest d1 execute art-website-db --remote --file=./schema.sql
+```text
+Variable name：DB
+D1 database：art-website-db
 ```
 
-`schema.sql` 可重复执行。它会创建表和索引，替换旧的 `updated_at` 触发器，并写入默认艺术家资料。
+### 2. 配置环境变量
 
-### 4. 创建 Pages 项目并配置密钥
+在 Cloudflare Pages 项目 Settings → Environment variables 中添加：
 
-```powershell
-npx wrangler@latest pages project create art-website --production-branch main
-npx wrangler@latest pages secret put ADMIN_PASSWORD --project-name art-website
-npx wrangler@latest pages secret put SESSION_SECRET --project-name art-website
-```
+- `SESSION_SECRET`：**建议必填**，至少 32 字节随机字符串，用于签名后台会话。
+- `ADMIN_PASSWORD`：仅在使用 `schema.sql` 从空用户表首次开通 admin 时需要。
 
-要求：
+如果直接使用 `init.sql`，其中已经包含 admin 的 PBKDF2 哈希，日常登录不依赖 `ADMIN_PASSWORD`。但仍必须配置 `SESSION_SECRET`。
 
-- `ADMIN_PASSWORD`：至少 8 位，生产环境建议至少 16 位。
-- `SESSION_SECRET`：建议使用 32 字节以上的随机值；不设置时会回退用 `ADMIN_PASSWORD` 签名登录态。
-- 不要把管理员密码写入 `wrangler.jsonc` 或提交到 Git。
-
-生成随机密钥示例：
+生成随机值：
 
 ```powershell
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-### 5. 部署
+### 3. 初始化数据库
+
+新数据库或需要完整重置时，推荐直接执行：
 
 ```powershell
-npx wrangler@latest pages deploy public --project-name art-website
+npx wrangler@latest d1 execute art-website-db --remote --file=./init.sql
 ```
 
-> 输出目录必须是 `public`，不能是 `.`。写成 `.` 会把 `wrangler.jsonc`、`schema.sql`、
-> `.dev.vars`（含明文管理员密码）等仓库文件当成静态资源一并发布到公网。
+`init.sql` 包含：
 
-部署后先访问：
+- 完整表结构、索引和触发器
+- demo 作品、艺术家资料、栏目和线下活动
+- 当前站点文案和 Artvee 图片配置
+- `users` 表中的 admin 用户和 PBKDF2 密码哈希
 
-- `/api/health`：应返回 `ok: true`
-- `/admin/login`：输入 `ADMIN_PASSWORD` 登录
-- `/admin`：管理作品和艺术家资料
+> `init.sql` 会先删除业务表再重建，只应在新数据库或明确需要重置时运行。脚本不包含明文密码，登录使用当前本地 admin 密码，部署后请立即在后台修改。
+
+### 4. 旧数据库增量升级
+
+已经存在数据、不要重置时，按顺序执行：
+
+```powershell
+npx wrangler@latest d1 execute art-website-db --remote --file=./migrations/005_users.sql
+npx wrangler@latest d1 execute art-website-db --remote --file=./migrations/006_hero_copy.sql
+npx wrangler@latest d1 execute art-website-db --remote --file=./migrations/007_home_nav_images.sql
+npx wrangler@latest d1 execute art-website-db --remote --file=./migrations/008_hero_image.sql
+```
+
+### 5. 推送 GitHub
+
+确认 D1 绑定和 Secrets 已配置后，推送到 `main`：
+
+```powershell
+git add .
+git commit -m "update website"
+git push origin main
+```
+
+Cloudflare Pages 会自动部署。部署后检查：
+
+- `/api/health`：返回 `ok: true`
+- `/admin/login`：用户名 `admin`
+- `/admin`：进入「账号安全」修改密码
 
 ## 二、本地开发
 
-复制本地变量示例：
+复制本地变量：
 
 ```powershell
 Copy-Item .dev.vars.example .dev.vars
 ```
 
-填写 `.dev.vars` 中的 `ADMIN_PASSWORD` 和 `SESSION_SECRET` 后执行：
+填写 `ADMIN_PASSWORD` 和 `SESSION_SECRET`。初始化本地 D1：
 
 ```powershell
-npx wrangler@latest d1 execute art-website-db --local --file=./schema.sql
-npx wrangler@latest pages dev .
+npx wrangler@latest d1 execute art-website-db --local --file=./init.sql
+npx wrangler@latest d1 execute art-website-db --local --file=./verify.sql
 ```
 
-默认地址为 `http://localhost:8788`。
+启动 Pages：
 
-`.dev.vars` 已加入 `.gitignore`，不能提交。
+```powershell
+npx wrangler@latest pages dev public --ip 127.0.0.1 --port 8788
+```
+
+访问：
+
+```text
+前台：http://127.0.0.1:8788/
+后台：http://127.0.0.1:8788/admin/login
+```
 
 ## 三、项目结构
 
 ```text
 .
 ├── wrangler.jsonc
-├── schema.sql
-├── .dev.vars.example
-├── public/                        ← pages_build_output_dir，只有这个目录会被发布
-│   ├── _redirects
-│   ├── index.html
-│   ├── admin/
-│   │   ├── login.html
-│   │   └── index.html
-│   ├── assets/
-│   ├── styles/
-│   └── js/
-└── functions/
-    ├── _middleware.js
-    ├── _lib/
-    ├── api/
-    │   ├── health.js
-    │   ├── artist.js
-    │   ├── artworks.js
-    │   ├── artworks/[slug].js
-    │   ├── admin/login.js
-    │   ├── admin/logout.js
-    │   ├── admin/artist.js
-    │   ├── admin/artworks.js
-    │   ├── admin/artworks/new.js
-    │   ├── admin/artworks/[id].js
-    │   └── admin/upload.js
-    └── r2/[[key]].js
+├── init.sql                  # 完整初始化 + demo 数据 + 用户哈希
+├── schema.sql                # 可重复执行的结构与基础数据脚本
+├── seed_demo.sql             # 可选 demo 数据
+├── verify.sql                # 只读 JSON 校验报告
+├── reset_local.sql           # 仅本地重置
+├── migrations/
+├── functions/
+│   ├── _middleware.js
+│   ├── _lib/
+│   ├── api/
+│   │   ├── artist.js
+│   │   ├── artworks.js
+│   │   ├── artworks/[id].js
+│   │   ├── categories.js
+│   │   ├── meetup.js
+│   │   ├── site-content.js
+│   │   ├── health.js
+│   │   ├── admin/
+│   │   └── admin/upload.js       # R2 休眠代码
+│   └── r2/[[key]].js             # R2 休眠代码
+└── public/
+    ├── index.html
+    ├── _redirects
+    ├── admin/
+    └── assets/
+        ├── js/
+        └── styles/
 ```
 
-Cloudflare Pages 的全局中间件文件名必须是 `_middleware.js`，不能写成 `+middleware.js`。`admin/upload.js` 与 `r2/[[key]].js` 是 R2 休眠代码，未绑定对象存储时不参与运行。
-
-## 四、API
+## 四、主要 API
 
 公开接口：
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | `/api/health` | D1 绑定与数据库健康检查，R2 绑定为可选检查 |
-| GET | `/api/artist` | 获取艺术家资料 |
-| GET | `/api/artworks` | 已上架作品列表，支持 `category`、`featured`、`limit`、`offset` |
-| GET | `/api/artworks/:slug` | 作品详情；GET 会累计浏览量 |
-| GET | `/r2/artworks/*` | 从私有 R2 读取图片；未绑定 R2 时休眠 |
+| GET | `/api/health` | 数据库与绑定健康检查 |
+| GET | `/api/artist` | 艺术家资料 |
+| GET | `/api/artworks` | 已上架作品，支持 `category`、`featured`、`limit`、`offset` |
+| GET | `/api/artworks/:id` | 作品详情 |
+| GET | `/api/categories` | 启用中的栏目 |
+| GET | `/api/meetup` | 线下交流条目 |
+| GET | `/api/site-content` | 前台站点文案 |
 
-管理接口，需要有效 `art_session` Cookie：
+管理接口：
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/api/admin/login` | 登录并签发 24 小时签名 Cookie |
-| POST | `/api/admin/logout` | 删除登录 Cookie |
-| GET | `/api/admin/artworks` | 获取全部作品，支持搜索和状态筛选 |
-| POST | `/api/admin/artworks/new` | 新建作品 |
-| PATCH | `/api/admin/artworks/:id` | 更新作品 |
-| DELETE | `/api/admin/artworks/:id` | 删除作品 |
-| PUT | `/api/admin/artist` | 更新艺术家资料 |
-| POST | `/api/admin/upload` | 上传图片到 R2；未绑定 R2 时休眠，当前使用外链方案 |
+| POST | `/api/admin/login` | 登录名和密码登录 |
+| GET | `/api/admin/account` | 当前用户 |
+| PUT | `/api/admin/password` | 修改密码 |
+| POST | `/api/admin/logout` | 退出登录 |
+| GET/POST/PATCH/DELETE | `/api/admin/artworks*` | 作品管理 |
+| GET/POST/PATCH/DELETE | `/api/admin/categories*` | 栏目管理 |
+| PUT | `/api/admin/artist` | 艺术家资料 |
+| GET/PUT | `/api/admin/meetup` | 线下交流 |
+| GET/PUT | `/api/admin/site-content` | 站点文案 |
+| POST | `/api/admin/upload` | R2 上传，当前未绑定 |
 
-## 五、配置项
+## 五、数据库脚本
 
-`wrangler.jsonc` 只保留非敏感的项目配置：项目名称、`pages_build_output_dir`、`compatibility_date` 和 D1 绑定，不含任何密钥，也没有 `vars` 段。
-
-敏感配置全部通过 Cloudflare Pages Secrets 管理，不会提交到仓库：
-
-- `ADMIN_PASSWORD`：后台登录密码，**必需**，至少 8 位
-- `SESSION_SECRET`：会话签名密钥，可选但强烈建议；缺失时回退用 `ADMIN_PASSWORD` 签名
-
-恢复 R2 上传功能时，再把 `ALLOWED_MIME_TYPES`、`MAX_UPLOAD_SIZE`、`MAX_TOTAL_UPLOAD_SIZE` 加回 `wrangler.jsonc` 的 `vars`。`upload.js` 内已有默认值兜底，不加也能运行。
+- `init.sql`：完整初始化，包含结构、demo 数据和当前用户哈希；会重置业务表。
+- `schema.sql`：只创建结构和基础默认内容，可重复执行。
+- `verify.sql`：只读检查，输出 JSON 报告，所有 `problems` 应为 `0`。
+- `seed_demo.sql`：可选 demo 数据，适合本地开发。
+- `reset_local.sql`：仅用于本地重置，不要对线上执行。
+- `migrations/005` 至 `migrations/008`：用户、Hero 文案、导航图片和 Hero 图片的增量升级。
 
 ## 六、安全设计
 
-当前实现已包含：
-
-- HMAC-SHA256 签名的 HttpOnly 会话 Cookie
-- `SameSite=Strict`，生产 HTTPS 自动添加 `Secure`
-- 24 小时会话过期
-- 登录密码摘要比较，避免明显的时序差异
-- 管理接口的同源请求检查
+- 用户密码使用随机盐 + PBKDF2-SHA256（210000 次迭代）存储
+- 会话使用 HMAC-SHA256 签名 HttpOnly Cookie
+- `SameSite=Strict`，HTTPS 自动添加 `Secure`
+- 管理接口检查同源请求
 - 后台字段白名单、类型和长度校验
-- slug 唯一性校验
-- 图片地址必须是 HTTPS（本地开发允许 localhost），单个地址不超过 2048 字符
-- 站内 `/r2/artworks/` 路径拒绝 `..` 路径穿越
-- images 数组 1-20 张
-- 统一安全响应头，包括 `nosniff` 和禁止 iframe 嵌入
-- 后台列表、详情和上传均设置 `Cache-Control: no-store`
+- 图片只允许 HTTPS 或本项目 R2 路径
+- 统一安全响应头，包括 CSP、`nosniff` 和禁止 iframe 嵌入
+- 后台改密需要验证当前密码
 
-仍需在 Cloudflare 控制台配置：
+建议在 Cloudflare 对 `/api/admin/login` 配置 Rate Limiting 或 WAF，并定期备份 D1。
 
-1. 对 `/api/admin/login` 配置 Rate Limiting 或 WAF 规则，防止密码暴力尝试。
-2. 定期备份 D1；删除作品不会删除图床上的原图，外链需在图床侧清理。
-3. 如果旧版本曾上线，因为旧代码使用固定 `art_session=1` 且提交过默认密码，应立即更换 `ADMIN_PASSWORD` 和 `SESSION_SECRET`。
-
-## 七、常用检查
+## 七、检查命令
 
 ```powershell
-# JavaScript 语法
-node --check assets/js/admin.js
-node --check assets/js/views.js
+node --check functions/_lib/auth.js
+node --check public/assets/js/admin.js
+node --check public/assets/js/views.js
+node --check public/assets/js/router.js
 
-# 查看 Wrangler 配置
-npx wrangler@latest pages project list
-npx wrangler@latest d1 list
-
-# 线上健康检查
-Invoke-RestMethod https://你的域名.pages.dev/api/health
+npx wrangler@latest d1 execute art-website-db --local --file=./verify.sql
+npx wrangler@latest pages dev public
 ```
 
 ## 许可证

@@ -5,6 +5,7 @@
 # 但 /api/*, /admin/*, /r2/* 不 fallback（由后端处理）
 /about    /index.html 200
 /contact  /index.html 200
+/meetup   /index.html 200
 
 # 注意：不要为 /admin、/admin/login 写 rewrite 规则。
 # Pages 会自动把 /admin/login 解析到 /admin/login.html；

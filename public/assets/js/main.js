@@ -22,6 +22,24 @@ function applySiteMeta(content) {
   }
 }
 
+// 应用站点图标 / Logo（site.favicon / site.logo_icon_light / site.logo_icon_dark）
+function applyVisualConfig(content) {
+  const favicon = content['site.favicon'];
+  if (favicon) {
+    const link = document.getElementById('site-favicon');
+    if (link) link.href = favicon;
+  }
+  document.querySelectorAll('[data-src-config]').forEach(function (el) {
+    const key = el.getAttribute('data-src-config');
+    const value = key && content[key];
+    if (value) {
+      el.src = value;
+      el.style.display = '';
+      if (el.parentNode) el.parentNode.classList.remove('logo-mark-fallback');
+    }
+  });
+}
+
 // 应用导航栏与页脚的文案（HTML 里用 data-text="key" 标记，由 JS 注入）
 function applyChromeTexts(content) {
   // 通用：所有带 data-text="key" 的元素
@@ -48,7 +66,8 @@ function applyChromeTexts(content) {
     const path = location.pathname.replace(/\/+$/, '') || '/';
     const pathMap = {
       '/about': '#/about',
-      '/contact': '#/contact'
+      '/contact': '#/contact',
+      '/meetup': '#/meetup'
     };
 
     if (!location.hash && pathMap[path]) {
@@ -81,10 +100,11 @@ function applyChromeTexts(content) {
 
     if (!location.hash) history.replaceState(null, '', '#/');
 
-    // 先加载站点文案，再启动路由；导航/页脚/页面文案统一从 DB 取
-    loadSiteContent().then(function () {
+    // 先加载站点文案与栏目配置，再启动路由；导航/页脚/栏目名统一从 DB 取
+    Promise.all([loadSiteContent(), window.loadCategories()]).then(function () {
       applySiteMeta(window.State.content);
       applyChromeTexts(window.State.content);
+      applyVisualConfig(window.State.content);
       window.Router.navigate();
     });
   }

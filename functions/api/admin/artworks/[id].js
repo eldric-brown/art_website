@@ -1,5 +1,6 @@
 import {
   json,
+  loadAllowedCategories,
   methodNotAllowed,
   safeParseJSON,
   validateArtworkPayload
@@ -24,7 +25,11 @@ async function handlePatch(id, request, env) {
     return json({ ok: false, error: 'invalid_json' }, 400);
   }
 
-  const { errors, data } = validateArtworkPayload(body, { partial: true });
+  const allowedCategories = await loadAllowedCategories(env);
+  const { errors, data } = validateArtworkPayload(body, {
+    partial: true,
+    allowedCategories
+  });
   if (errors.length) {
     return json({ ok: false, error: 'validation_failed', details: errors }, 422);
   }
@@ -49,7 +54,7 @@ async function handlePatch(id, request, env) {
 
     const row = await env.DB.prepare(
       `SELECT id, title, description, images, category, year, medium, dimensions,
-              published, featured, sort_order, views, created_at, updated_at
+              published, featured, sort_order, sold, price, views, created_at, updated_at
        FROM artworks WHERE id = ?`
     ).bind(id).first();
 

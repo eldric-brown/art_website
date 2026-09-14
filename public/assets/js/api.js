@@ -57,6 +57,14 @@ window.API = (function () {
       return request('/api/artist');
     },
 
+    listCategories: function () {
+      return request('/api/categories');
+    },
+
+    listMeetups: function () {
+      return request('/api/meetup');
+    },
+
     getSiteContent: function () {
       return request('/api/site-content');
     }

@@ -1,4 +1,9 @@
-import { json, methodNotAllowed, validateArtworkPayload } from '../../../_lib/http.js';
+import {
+  json,
+  loadAllowedCategories,
+  methodNotAllowed,
+  validateArtworkPayload
+} from '../../../_lib/http.js';
 
 export async function onRequest({ request, env }) {
   if (request.method !== 'POST') return methodNotAllowed(['POST']);
@@ -10,7 +15,8 @@ export async function onRequest({ request, env }) {
     return json({ ok: false, error: 'invalid_json' }, 400);
   }
 
-  const { errors, data } = validateArtworkPayload(body);
+  const allowedCategories = await loadAllowedCategories(env);
+  const { errors, data } = validateArtworkPayload(body, { allowedCategories });
   if (errors.length) {
     return json({ ok: false, error: 'validation_failed', details: errors }, 422);
   }
@@ -19,8 +25,8 @@ export async function onRequest({ request, env }) {
     const result = await env.DB.prepare(
       `INSERT INTO artworks
          (title, description, images, category, year, medium, dimensions,
-          published, featured, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          published, featured, sort_order, sold, price)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       data.title,
       data.description,
@@ -31,12 +37,14 @@ export async function onRequest({ request, env }) {
       data.dimensions,
       data.published,
       data.featured,
-      data.sort_order
+      data.sort_order,
+      data.sold,
+      data.price
     ).run();
 
     const row = await env.DB.prepare(
       `SELECT id, title, description, images, category, year, medium, dimensions,
-              published, featured, sort_order, views, created_at, updated_at
+              published, featured, sort_order, sold, price, views, created_at, updated_at
        FROM artworks WHERE id = ?`
     ).bind(result.meta.last_row_id).first();
 

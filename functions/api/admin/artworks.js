@@ -32,7 +32,7 @@ export async function onRequest({ request, env }) {
   try {
     const rows = await env.DB.prepare(
       `SELECT id, title, description, images, category, year, medium, dimensions,
-              published, featured, sort_order, views, created_at, updated_at
+              published, featured, sort_order, sold, price, views, created_at, updated_at
        FROM artworks
        ${where}
        ORDER BY updated_at DESC, id DESC

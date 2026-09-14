@@ -2,7 +2,7 @@ import { json, methodNotAllowed } from '../../_lib/http.js';
 
 // key 命名约束：形如 'page.block.item'，允许字母/数字/点/下划线/连字符
 const KEY_RE = /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/;
-const MAX_VALUE_LENGTH = 2000;
+const MAX_VALUE_LENGTH = 2048;
 const MAX_KEYS_PER_REQUEST = 300;
 
 function validateSiteContent(body) {

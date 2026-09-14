@@ -1,16 +1,25 @@
-import { createSessionCookie, secureStringEqual } from '../../_lib/auth.js';
+import {
+  createPasswordRecord,
+  createSessionCookie,
+  secureStringEqual,
+  verifyPassword
+} from '../../_lib/auth.js';
 import { json, methodNotAllowed } from '../../_lib/http.js';
+
+const BOOTSTRAP_USERNAME = 'admin';
+
+function invalidCredentials() {
+  return json({
+    ok: false,
+    error: 'invalid_credentials',
+    message: '登录名或密码错误'
+  }, 401);
+}
 
 export async function onRequest({ request, env }) {
   if (request.method !== 'POST') return methodNotAllowed(['POST']);
-
-  if (typeof env.ADMIN_PASSWORD !== 'string' || env.ADMIN_PASSWORD.length < 8) {
-    console.error('ADMIN_PASSWORD is missing or too short');
-    return json({
-      ok: false,
-      error: 'server_misconfigured',
-      message: '管理员密码尚未正确配置'
-    }, 500);
+  if (!env.DB) {
+    return json({ ok: false, error: 'database_unavailable', message: '登录服务暂不可用' }, 500);
   }
 
   let body;
@@ -20,23 +29,70 @@ export async function onRequest({ request, env }) {
     return json({ ok: false, error: 'invalid_json' }, 400);
   }
 
+  const username = body && typeof body.username === 'string' ? body.username.trim() : '';
   const password = body && typeof body.password === 'string' ? body.password : '';
-  if (!password || password.length > 512) {
-    return json({
-      ok: false,
-      error: 'invalid_credentials',
-      message: '密码错误'
-    }, 401);
+  if (!username || username.length > 50 || password.length > 512) {
+    return invalidCredentials();
   }
 
-  if (!(await secureStringEqual(password, env.ADMIN_PASSWORD))) {
+  try {
+    let user = await env.DB.prepare(
+      `SELECT id, username, password_hash, password_salt, password_iterations, password_algo
+       FROM users
+       WHERE username = ? COLLATE NOCASE`
+    ).bind(username).first();
+
+    let loginUsername = user ? user.username : '';
+
+    if (!user) {
+      const countRow = await env.DB.prepare('SELECT COUNT(*) AS count FROM users').first();
+      const usersCount = Number((countRow && countRow.count) || 0);
+      const canBootstrap = usersCount === 0 &&
+        username.toLowerCase() === BOOTSTRAP_USERNAME &&
+        typeof env.ADMIN_PASSWORD === 'string' &&
+        env.ADMIN_PASSWORD.length >= 8;
+
+      if (!canBootstrap || !(await secureStringEqual(password, env.ADMIN_PASSWORD))) {
+        return invalidCredentials();
+      }
+
+      const record = await createPasswordRecord(password);
+      const result = await env.DB.prepare(
+        `INSERT INTO users
+           (username, password_hash, password_salt, password_iterations, password_algo)
+         VALUES (?, ?, ?, ?, ?)`
+      ).bind(
+        BOOTSTRAP_USERNAME,
+        record.hash,
+        record.salt,
+        record.iterations,
+        record.algorithm
+      ).run();
+
+      user = { id: result.meta.last_row_id, username: BOOTSTRAP_USERNAME };
+      loginUsername = BOOTSTRAP_USERNAME;
+    } else if (user.password_hash === '') {
+      // 首次登录（密码哈希为空）：跳过密码校验，登录后强制改密
+      const cookie = await createSessionCookie(request, env, Number(user.id));
+      return json({
+        ok: true,
+        data: { username: loginUsername, must_change_password: true }
+      }, 200, { 'Set-Cookie': cookie });
+    } else if (!(await verifyPassword(password, user))) {
+      return invalidCredentials();
+    }
+
+    const cookie = await createSessionCookie(request, env, Number(user.id));
+    return json({
+      ok: true,
+      data: { username: loginUsername, must_change_password: false }
+    }, 200, { 'Set-Cookie': cookie });
+  } catch (error) {
+    console.error('login failed:', error);
     return json({
       ok: false,
-      error: 'invalid_credentials',
-      message: '密码错误'
-    }, 401);
+      error: 'login_unavailable',
+      message: '登录服务暂不可用，请检查数据库迁移'
+    }, 500);
   }
-
-  const cookie = await createSessionCookie(request, env);
-  return json({ ok: true }, 200, { 'Set-Cookie': cookie });
 }

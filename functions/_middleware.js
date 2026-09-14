@@ -14,6 +14,12 @@ function withSecurityHeaders(response) {
   secured.headers.set('X-Frame-Options', 'DENY');
   secured.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   secured.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  secured.headers.set(
+    'Content-Security-Policy',
+    "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; " +
+    "img-src 'self' data: https:; script-src 'self' 'unsafe-inline'; " +
+    "style-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self' data:; form-action 'self'"
+  );
   return secured;
 }
 

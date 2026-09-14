@@ -112,6 +112,11 @@ export async function onRequest({ request, env }) {
   }
 
   try {
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO artist (id, name, name_en)
+       VALUES (1, 'Tang Yibai', 'Tang Yibai')`
+    ).run();
+
     const sets = keys.map((key) => `${key} = ?`);
     const values = keys.map((key) => key === 'socials' ? JSON.stringify(data[key]) : data[key]);
     sets.push("updated_at = datetime('now')");
