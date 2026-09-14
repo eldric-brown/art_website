@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS users (
     username            TEXT    NOT NULL COLLATE NOCASE UNIQUE,
     password_hash       TEXT    NOT NULL,
     password_salt       TEXT    NOT NULL,
-    password_iterations INTEGER NOT NULL DEFAULT 210000,
+    password_iterations INTEGER NOT NULL DEFAULT 100000,
     password_algo       TEXT    NOT NULL DEFAULT 'PBKDF2-SHA256',
     created_at          TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at          TEXT    NOT NULL DEFAULT (datetime('now'))

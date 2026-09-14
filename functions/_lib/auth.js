@@ -1,6 +1,6 @@
 const COOKIE_NAME = 'art_session';
 const SESSION_TTL_SECONDS = 24 * 60 * 60;
-const PBKDF2_ITERATIONS = 210000;
+const PBKDF2_ITERATIONS = 100000;
 const PASSWORD_KEY_BYTES = 32;
 const PASSWORD_SALT_BYTES = 16;
 const encoder = new TextEncoder();
@@ -134,7 +134,7 @@ export async function verifyPassword(password, user) {
   if (!user || typeof password !== 'string') return false;
   if (user.password_algo && user.password_algo !== 'PBKDF2-SHA256') return false;
   const iterations = Number(user.password_iterations);
-  if (!Number.isInteger(iterations) || iterations < 10000 || iterations > 1000000) return false;
+  if (!Number.isInteger(iterations) || iterations < 10000 || iterations > 100000) return false;
 
   try {
     const actual = base64UrlToBytes(await derivePassword(password, user.password_salt, iterations));
