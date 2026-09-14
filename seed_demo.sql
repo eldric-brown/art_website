@@ -72,3 +72,24 @@ WHERE NOT EXISTS (SELECT 1 FROM meetup_items WHERE title = 'Studio Visit: Tang Y
 INSERT INTO meetup_items (title, date_text, location, image, sort_order)
 SELECT 'Group Exhibition Opening', 'March 2026', 'Beijing · 798 Art District', 'https://picsum.photos/seed/meetup-3/1200/800', 10
 WHERE NOT EXISTS (SELECT 1 FROM meetup_items WHERE title = 'Group Exhibition Opening');
+
+-- ---------- 4. 首页内容卡（可选演示；正式上线请到后台「首页展示」里替换） ----------
+-- 用 UPSERT：schema.sql 里的基线默认值是 count=0（空卡），这里覆盖为 3 张演示卡。
+INSERT INTO site_content (key, value, updated_at) VALUES
+('home.cards.title',    'Dive into the Collection',        datetime('now')),
+('home.cards.subtitle', 'A closer look at selected works and themes.', datetime('now')),
+('home.cards.count',    '3',                              datetime('now')),
+('home.card.1.title',   'Selected Works',                 datetime('now')),
+('home.card.1.text',    'A curated look at recent paintings.', datetime('now')),
+('home.card.1.image',   'https://picsum.photos/seed/card-works/800/1000', datetime('now')),
+('home.card.1.link',    '#/works',                        datetime('now')),
+('home.card.2.title',   'Studio Notes',                   datetime('now')),
+('home.card.2.text',    'Sketches and process behind the finished pieces.', datetime('now')),
+('home.card.2.image',   'https://picsum.photos/seed/card-notes/800/1000', datetime('now')),
+('home.card.2.link',    '#/about',                        datetime('now')),
+('home.card.3.title',   'Meet Up',                        datetime('now')),
+('home.card.3.text',    'Exhibitions, studio visits and in-person exchange.', datetime('now')),
+('home.card.3.image',   'https://picsum.photos/seed/card-meetup/800/1000', datetime('now')),
+('home.card.3.link',    '#/meetup',                       datetime('now')),
+('home.entry.contact.desc', 'Commissions and press inquiries are welcome.', datetime('now'))
+ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;

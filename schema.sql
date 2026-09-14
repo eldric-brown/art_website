@@ -292,5 +292,30 @@ VALUES (1, 'Tang Yibai', 'Tang Yibai');
 ('common.thumbnail',        'Thumbnail'),
 ('common.notFound.title',   'Page Not Found'),
 ('common.notFound.subtitle','The page you are looking for does not exist.'),
+-- 首页内容卡（第二屏「Dive into」区，后台在「首页展示」里增删）
+-- home.cards.count 记录卡片数量；home.card.N.{title,text,image,link} 为第 N 张卡
+('home.cards.title',    'Dive into the Collection'),
+('home.cards.subtitle', 'A closer look at selected works and themes.'),
+('home.cards.count',    '0'),
+('home.card.1.title',  ''),
+('home.card.1.text',   ''),
+('home.card.1.image',  ''),
+('home.card.1.link',   '#/works'),
+('home.card.2.title',  ''),
+('home.card.2.text',   ''),
+('home.card.2.image',  ''),
+('home.card.2.link',   '#/meetup'),
+('home.card.3.title',  ''),
+('home.card.3.text',   ''),
+('home.card.3.image',  ''),
+('home.card.3.link',   ''),
+('home.card.4.title',  ''),
+('home.card.4.text',   ''),
+('home.card.4.image',  ''),
+('home.card.4.link',   ''),
+
+-- 首页入口区（第三屏：首页 / 作品 / 线下交流 / 联系我们，标题复用 nav.*）
+('home.entry.contact.desc', 'Commissions and press inquiries are welcome.'),
+
 ('common.backHome',         'Back to Home');
 

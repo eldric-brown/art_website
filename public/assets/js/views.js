@@ -61,24 +61,13 @@ window.Views = (function () {
     '</section>';
   }
 
-  // 首页第三屏：作品集 / 关于 / 线下交流 入口卡
-  function entryCardsHtml() {
+  // 首页第三屏：入口区（首页 / 作品 / 线下交流 / 联系我们）
+  function entryCardsSectionHtml() {
     const cards = [
-      {
-        href: '#/works',
-        title: T('nav.works', 'Works'),
-        desc: T('home.entry.works.desc', 'Browse the full collection, filter by category.')
-      },
-      {
-        href: '#/about',
-        title: T('nav.about', 'About'),
-        desc: T('home.entry.about.desc', 'Biography, studio practice and press.')
-      },
-      {
-        href: '#/meetup',
-        title: T('nav.meetup', 'Meet Up'),
-        desc: T('home.entry.meetup.desc', 'Exhibitions, studio visits and in-person exchange.')
-      }
+      { href: '#/',        title: T('nav.home', 'Home'),        desc: '' },
+      { href: '#/works',   title: T('nav.works', 'Works'),      desc: T('home.entry.works.desc', 'Browse the full collection, filter by category.') },
+      { href: '#/meetup',  title: T('nav.meetup', 'Meet Up'),   desc: T('home.entry.meetup.desc', 'Exhibitions, studio visits and in-person exchange.') },
+      { href: '#/contact', title: T('nav.contact', 'Contact'),  desc: T('home.entry.contact.desc', 'Commissions and press inquiries are welcome.') }
     ];
 
     return '<section class="section section-alt">' +
@@ -88,7 +77,7 @@ window.Views = (function () {
             return '<a href="' + esc(card.href) + '" class="entry-card reveal">' +
               '<div class="entry-card-inner">' +
                 '<h3 class="entry-card-title">' + esc(card.title) + '</h3>' +
-                '<p class="entry-card-desc">' + esc(card.desc) + '</p>' +
+                (card.desc ? '<p class="entry-card-desc">' + esc(card.desc) + '</p>' : '') +
                 '<span class="entry-card-arrow" aria-hidden="true">→</span>' +
               '</div>' +
             '</a>';
@@ -96,6 +85,57 @@ window.Views = (function () {
         '</div>' +
       '</div>' +
     '</section>';
+  }
+
+  // 首页第二屏：内容卡（对应 artvee 的「Dive into Books & Wall Charts」）
+  // 数据源 site_content：home.cards.{title,subtitle,count} + home.card.N.{title,text,image,link}
+  // 后台在「首页展示」里自由增删；title 或 image 为空的卡前台不渲染。
+  function contentCardsSectionHtml() {
+    const count = parseInt(T('home.cards.count', '0'), 10);
+    if (!Number.isInteger(count) || count < 1) return '';
+
+    const cards = [];
+    for (let i = 1; i <= count; i += 1) {
+      const title = String(T('home.card.' + i + '.title', '') || '').trim();
+      const image = String(T('home.card.' + i + '.image', '') || '').trim();
+      if (!title || !image) continue;
+
+      cards.push({
+        title: title,
+        text: String(T('home.card.' + i + '.text', '') || '').trim(),
+        image: image,
+        link: String(T('home.card.' + i + '.link', '') || '').trim() || '#/works'
+      });
+    }
+    if (!cards.length) return '';
+
+    const sectionTitle = String(T('home.cards.title', '') || '').trim();
+    const sectionSubtitle = String(T('home.cards.subtitle', '') || '').trim();
+    const header = (sectionTitle || sectionSubtitle)
+      ? '<div class="section-header">' +
+          (sectionTitle ? '<h2 class="section-title">' + esc(sectionTitle) + '</h2>' : '') +
+          (sectionSubtitle ? '<p class="section-subtitle">' + esc(sectionSubtitle) + '</p>' : '') +
+        '</div>'
+      : '';
+
+    return '<section class="section">' +
+        header +
+        '<div class="container">' +
+          '<div class="content-cards">' +
+            cards.map(function (card) {
+              return '<a href="' + esc(card.link) + '" class="content-card reveal" tabindex="0">' +
+                '<span class="content-card-image">' +
+                  '<img src="' + esc(card.image) + '" alt="' + esc(card.title) + '" loading="lazy">' +
+                '</span>' +
+                '<span class="content-card-overlay">' +
+                  '<span class="content-card-title">' + esc(card.title) + '</span>' +
+                  (card.text ? '<span class="content-card-text">' + esc(card.text) + '</span>' : '') +
+                '</span>' +
+              '</a>';
+            }).join('') +
+          '</div>' +
+        '</div>' +
+      '</section>';
   }
 
   // 首页第一屏：优先 home.hero.image；为空回退到精选作品首图；
@@ -160,7 +200,7 @@ window.Views = (function () {
              '</section>';
     },
 
-    // ---------- 首页 ----------
+    // ---------- 首页（三段式：hero 横图 / 内容卡 / 入口区）----------
     home: async function () {
       document.body.dataset.view = 'home';
       let artist = null;
@@ -168,44 +208,15 @@ window.Views = (function () {
       try {
         const results = await Promise.all([
           window.API.getArtist().catch(function () { return null; }),
-          window.API.listArtworks({ featured: 1, limit: 12 })
+          window.API.listArtworks({ featured: 1, limit: 1 })
         ]);
         artist = results[0];
         featured = results[1].artworks || [];
       } catch (e) { console.warn('home load failed:', e); }
 
-      // 英文站点：优先取 name_en，避免 fallback 中英混合
-      const artistName = (artist && (artist.name_en || artist.name)) || 'Tang Yibai';
-
-      let featuredHtml = '';
-      if (featured.length) {
-        featuredHtml =
-          '<section class="section">' +
-            '<div class="section-header">' +
-              '<h2 class="section-title">' + U.escapeHtml(T('home.features.title', 'Selected Works')) + '</h2>' +
-              '<p class="section-subtitle">' + U.escapeHtml(T('home.features.subtitle', 'A selection of recent pieces · Click for details')) + '</p>' +
-            '</div>' +
-            '<div class="container">' +
-              '<div class="gallery" id="featured-gallery">' +
-                Views._renderGallery(featured) +
-              '</div>' +
-              '<div class="section-foot">' +
-                '<a href="#/works" class="btn btn-primary">' + U.escapeHtml(T('home.features.viewAll', 'View All Works →')) + '</a>' +
-              '</div>' +
-            '</div>' +
-          '</section>';
-      }
-
-      return '<section class="hero container reveal">' +
-             '<span class="hero-eyebrow">' + U.escapeHtml(T('hero.eyebrow', artistName + ' · Art Portfolio')) + '</span>' +
-             '<h1 class="hero-title">' + U.escapeHtml(T('hero.title', artistName)) + '</h1>' +
-             '<p class="hero-subtitle">' + U.escapeHtml(T('hero.subtitle', 'Painting as the confession of the soul — stories told through color and line.')) + '</p>' +
-             '<div class="hero-cta">' +
-               '<a href="#/works" class="btn btn-primary">' + U.escapeHtml(T('hero.cta.primary', 'Browse Works')) + '</a>' +
-               '<a href="#/about" class="btn btn-secondary">' + U.escapeHtml(T('hero.cta.secondary', 'Meet the Artist')) + '</a>' +
-             '</div>' +
-           '</section>' +
-           featuredHtml;
+      return heroSectionHtml(artist, featured) +
+             contentCardsSectionHtml() +
+             entryCardsSectionHtml();
     },
     // ---------- 作品列表 ----------
     // ---------- 作品列表：标题 + 栏目瓦片 + 作品网格 ----------
@@ -434,7 +445,6 @@ window.Views = (function () {
     _card(art) {
       const images = art.images || [];
       const firstImage = Array.isArray(images) && images.length ? String(images[0]) : '';
-      const category = U.categoryName(art.category);
 
       return '<a href="#/works/' + esc(art.id) + '" class="gallery-card reveal" tabindex="0">' +
         '<div class="gallery-card-image">' +
@@ -445,7 +455,7 @@ window.Views = (function () {
         '</div>' +
         '<div class="gallery-card-info">' +
           '<h3 class="gallery-card-title">' + esc(art.title) + '</h3>' +
-          '<p class="gallery-card-meta">' + esc(category) + ' · ' + esc(art.year) + '</p>' +
+          '<p class="gallery-card-meta">' + esc(art.year) + '</p>' +
         '</div>' +
       '</a>';
     },

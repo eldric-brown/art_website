@@ -76,7 +76,8 @@
     uploadedUrls: [],
     contentOriginal: {},
     categories: [],
-    meetups: []
+    meetups: [],
+    homeCards: []
   };
 
   // ---------- 作品列表 ----------
@@ -418,12 +419,20 @@
       'hero.title', 'hero.eyebrow', 'hero.subtitle',
       'hero.cta.primary', 'hero.cta.secondary'
     ]},
-    { title: '首页 Selected Works（第二屏）', keys: [
+    { title: '首页内容卡（第二屏「Dive into」区）', keys: [
+      'home.cards.title', 'home.cards.subtitle', 'home.cards.count',
+      'home.card.1.title', 'home.card.1.text', 'home.card.1.image', 'home.card.1.link',
+      'home.card.2.title', 'home.card.2.text', 'home.card.2.image', 'home.card.2.link',
+      'home.card.3.title', 'home.card.3.text', 'home.card.3.image', 'home.card.3.link',
+      'home.card.4.title', 'home.card.4.text', 'home.card.4.image', 'home.card.4.link'
+    ]},
+    { title: '首页入口区（第三屏）', keys: [
+      'home.entry.works.desc', 'home.entry.about.desc', 'home.entry.meetup.desc',
+      'home.entry.contact.desc'
+    ]},
+    { title: '首页精选（预留，暂不在首页展示）', keys: [
       'home.features.title', 'home.features.subtitle', 'home.features.viewAll',
       'featured.title', 'featured.subtitle', 'featured.viewAll'
-    ]},
-    { title: '首页入口卡（第三屏）', keys: [
-      'home.entry.works.desc', 'home.entry.about.desc', 'home.entry.meetup.desc'
     ]},
     { title: '作品列表与分类', keys: [
       'works.title', 'works.subtitle', 'works.empty.title', 'works.empty.subtitle',
@@ -764,6 +773,135 @@
     }
   }
 
+  // ---------- 首页展示 ----------
+  const HOME_CARD_FIELDS = ['title', 'text', 'image', 'link'];
+  const HOME_CARD_PLACEHOLDERS = {
+    title: '如：Studio Notes',
+    text: '如：Sketches and process behind the finished pieces.',
+    image: 'https://...',
+    link: '如：#/works 或 #/works/1 或 https://example.com'
+  };
+
+  function blankHomeCard() {
+    return { title: '', text: '', image: '', link: '#/works' };
+  }
+
+  async function loadHomeConfig() {
+    let content = {};
+    try {
+      const data = await api('/api/admin/site-content');
+      content = (data && data.content) || {};
+    } catch (e) {
+      toast(e.message, 'error');
+      return;
+    }
+
+    const val = function (key) { return content[key] ? content[key].value : ''; };
+
+    $('#home-hero-image').value = val('home.hero.image');
+    $('#home-hero-title').value = val('home.hero.title');
+    $('#home-hero-subtitle').value = val('home.hero.subtitle');
+    $('#home-hero-cta').value = val('home.hero.cta');
+    $('#home-cards-title').value = val('home.cards.title');
+    $('#home-cards-subtitle').value = val('home.cards.subtitle');
+
+    const count = parseInt(val('home.cards.count') || '0', 10);
+    state.homeCards = [];
+    for (let i = 1; i <= Math.max(count, 0); i += 1) {
+      state.homeCards.push({
+        title: val('home.card.' + i + '.title'),
+        text: val('home.card.' + i + '.text'),
+        image: val('home.card.' + i + '.image'),
+        link: val('home.card.' + i + '.link')
+      });
+    }
+    if (!state.homeCards.length) state.homeCards.push(blankHomeCard());
+    renderHomeCards();
+  }
+
+  function renderHomeCards() {
+    const container = $('#home-cards-editor');
+    container.innerHTML = state.homeCards.map(function (card, idx) {
+      return '<fieldset style="border:1px solid var(--color-border);border-radius:8px;padding:12px 16px;margin-bottom:12px;">' +
+        '<legend style="font-weight:600;padding:0 6px;">内容卡 ' + (idx + 1) + '</legend>' +
+        '<div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+          '<div class="field-group field"><label>标题</label><input type="text" data-hc="title" value="' + escapeHtml(card.title) + '" placeholder="' + HOME_CARD_PLACEHOLDERS.title + '"></div>' +
+          '<div class="field-group field"><label>跳转链接</label><input type="text" data-hc="link" value="' + escapeHtml(card.link) + '" placeholder="' + HOME_CARD_PLACEHOLDERS.link + '"></div>' +
+        '</div>' +
+        '<div class="field-group field"><label>文字说明</label><input type="text" data-hc="text" value="' + escapeHtml(card.text) + '" placeholder="' + HOME_CARD_PLACEHOLDERS.text + '"></div>' +
+        '<div class="field-group field"><label>图片 URL</label><input type="text" data-hc="image" value="' + escapeHtml(card.image) + '" placeholder="' + HOME_CARD_PLACEHOLDERS.image + '"></div>' +
+        '<button type="button" class="btn btn-sm btn-danger" data-hc-remove="' + idx + '">移除这张卡</button>' +
+      '</fieldset>';
+    }).join('');
+
+    $$('[data-hc-remove]', container).forEach(function (btn) {
+      btn.onclick = function () {
+        const idx = parseInt(btn.dataset.hcRemove, 10);
+        state.homeCards.splice(idx, 1);
+        if (!state.homeCards.length) state.homeCards.push(blankHomeCard());
+        renderHomeCards();
+      };
+    });
+  }
+
+  function addHomeCard() {
+    state.homeCards.push(blankHomeCard());
+    renderHomeCards();
+  }
+
+  async function saveHomeConfig() {
+    const rows = $('#home-cards-editor').querySelectorAll('fieldset');
+    const cards = [];
+    rows.forEach(function (row) {
+      const card = {};
+      HOME_CARD_FIELDS.forEach(function (field) {
+        const input = row.querySelector('[data-hc="' + field + '"]');
+        card[field] = input ? input.value.trim() : '';
+      });
+      cards.push(card);
+    });
+
+    // 只保留有标题或有图片的卡；全空则 count = 0
+    const kept = cards.filter(function (c) { return c.title || c.image; });
+
+    const payload = {
+      'home.hero.image': $('#home-hero-image').value.trim(),
+      'home.hero.title': $('#home-hero-title').value.trim(),
+      'home.hero.subtitle': $('#home-hero-subtitle').value.trim(),
+      'home.hero.cta': $('#home-hero-cta').value.trim(),
+      'home.cards.title': $('#home-cards-title').value.trim(),
+      'home.cards.subtitle': $('#home-cards-subtitle').value.trim(),
+      'home.cards.count': String(kept.length)
+    };
+
+    kept.forEach(function (card, i) {
+      const n = i + 1;
+      payload['home.card.' + n + '.title'] = card.title;
+      payload['home.card.' + n + '.text'] = card.text;
+      payload['home.card.' + n + '.image'] = card.image;
+      payload['home.card.' + n + '.link'] = card.link;
+    });
+
+    // 清掉被删掉的多余槽位（最多支持 8 张）
+    for (let i = kept.length + 1; i <= 8; i += 1) {
+      payload['home.card.' + i + '.title'] = '';
+      payload['home.card.' + i + '.text'] = '';
+      payload['home.card.' + i + '.image'] = '';
+      payload['home.card.' + i + '.link'] = '';
+    }
+
+    try {
+      await api('/api/admin/site-content', {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+      toast('首页配置已保存', 'success');
+      loadHomeConfig();
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  }
+
   // ---------- Tab 切换 ----------
   function setupTabs() {
     $$('.admin-nav-link[data-tab]').forEach(function (link) {
@@ -778,6 +916,7 @@
         if (tab === 'content') loadSiteContent();
         if (tab === 'categories') loadCategories();
         if (tab === 'meetup') loadMeetups();
+        if (tab === 'home') loadHomeConfig();
       };
     });
   }
@@ -818,6 +957,9 @@
     $('#btn-add-meetup').onclick = addMeetupRow;
     $('#btn-save-meetup').onclick = saveMeetups;
     $('#btn-refresh-meetup').onclick = loadMeetups;
+    $('#btn-save-home').onclick = saveHomeConfig;
+    $('#btn-reset-home').onclick = loadHomeConfig;
+    $('#btn-add-home-card').onclick = addHomeCard;
 
     // 作品表单的分类下拉改为读后台栏目表（失败时保留 HTML 里的静态选项）
     loadCategoryOptions();

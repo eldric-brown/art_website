@@ -65,7 +65,8 @@ SELECT key, value FROM site_content
 WHERE key IN (
     'nav.meetup', 'home.hero.title', 'home.hero.subtitle', 'home.hero.cta',
     'home.features.title', 'home.features.subtitle', 'home.features.viewAll',
-    'home.entry.works.desc', 'home.entry.about.desc', 'home.entry.meetup.desc',
+    'home.entry.works.desc', 'home.entry.about.desc', 'home.entry.meetup.desc', 'home.entry.contact.desc',
+    'home.cards.title', 'home.cards.subtitle', 'home.cards.count',
     'work.sold', 'work.price',
     'meetup.title', 'meetup.subtitle', 'meetup.empty'
 )
