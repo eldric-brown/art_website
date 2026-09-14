@@ -217,12 +217,20 @@ CREATE TABLE users (
     username            TEXT    NOT NULL COLLATE NOCASE UNIQUE,
     password_hash       TEXT    NOT NULL,
     password_salt       TEXT    NOT NULL,
+<<<<<<< HEAD
     password_iterations INTEGER NOT NULL DEFAULT 100000,
+=======
+    password_iterations INTEGER NOT NULL DEFAULT 210000,
+>>>>>>> ed1c59db16bc608dd4c6f332118edae694bb8c2c
     password_algo       TEXT    NOT NULL DEFAULT 'PBKDF2-SHA256',
     created_at          TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at          TEXT    NOT NULL DEFAULT (datetime('now'))
 );
+<<<<<<< HEAD
 INSERT INTO "users" ("id","username","password_hash","password_salt","password_iterations","password_algo","created_at","updated_at") VALUES(1,'admin','lgT7N58-y6l95fC5wVDdyJzdaSeBAr24qwTahy3sXD0','bPN1AEEs0nZHgpeotAczcw',100000,'PBKDF2-SHA256','2026-09-14 01:51:07','2026-09-14 02:33:59');
+=======
+INSERT INTO "users" ("id","username","password_hash","password_salt","password_iterations","password_algo","created_at","updated_at") VALUES(1,'admin','lgT7N58-y6l95fC5wVDdyJzdaSeBAr24qwTahy3sXD0','bPN1AEEs0nZHgpeotAczcw',210000,'PBKDF2-SHA256','2026-09-14 01:51:07','2026-09-14 02:33:59');
+>>>>>>> ed1c59db16bc608dd4c6f332118edae694bb8c2c
 CREATE INDEX idx_artworks_published ON artworks(published, sort_order DESC);
 CREATE INDEX idx_artworks_category  ON artworks(published, category, sort_order DESC);
 CREATE INDEX idx_artworks_featured  ON artworks(featured, sort_order DESC);
