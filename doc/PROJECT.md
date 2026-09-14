@@ -283,6 +283,20 @@ npx wrangler d1 execute art-website-db --remote --file=./doc/sql/02_demo_data.sq
 
 > `01_schema.sql` 会先删除业务表再重建，只应在新数据库或明确需要重置时运行。
 
+#### 忘记后台密码：重置 admin 账号
+
+`02_demo_data.sql` 已写入 admin 的 PBKDF2 哈希，正常无需此步。仅当忘记后台密码时，把 `password_hash` 置空即可——`login.js` 检测到空哈希会放行登录并返回 `must_change_password: true`，前端随即引导设置新密码（由 `password.js` 完成，要求 ≥ 8 位）：
+
+```sql
+UPDATE users SET password_hash = '', password_salt = '' WHERE username = 'admin';
+```
+
+```powershell
+npx wrangler d1 execute art-website-db --remote --command="UPDATE users SET password_hash = '', password_salt = '' WHERE username = 'admin';"
+```
+
+> 该 SQL 即原 `reset_users.sql` 的核心逻辑，现已并入本文档；不再单独保留脚本文件。
+
 ### 4.2 表结构（共 7 张）
 
 #### artworks —— 作品表
