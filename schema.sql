@@ -62,6 +62,19 @@ CREATE TABLE IF NOT EXISTS artist (
     updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
+-- 后台用户表
+-- 密码只保存 PBKDF2-SHA256 派生结果，不保存明文或可逆密文。
+CREATE TABLE IF NOT EXISTS users (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    username            TEXT    NOT NULL COLLATE NOCASE UNIQUE,
+    password_hash       TEXT    NOT NULL,
+    password_salt       TEXT    NOT NULL,
+    password_iterations INTEGER NOT NULL DEFAULT 210000,
+    password_algo       TEXT    NOT NULL DEFAULT 'PBKDF2-SHA256',
+    created_at          TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at          TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
 -- 浏览量记录表（可选，用于分析热门作品）
 CREATE TABLE IF NOT EXISTS view_logs (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -137,6 +150,14 @@ BEGIN
     UPDATE meetup_items SET updated_at = datetime('now') WHERE id = OLD.id;
 END;
 
+DROP TRIGGER IF EXISTS trg_users_update_time;
+CREATE TRIGGER trg_users_update_time
+AFTER UPDATE OF username, password_hash, password_salt, password_iterations, password_algo ON users
+FOR EACH ROW
+BEGIN
+    UPDATE users SET updated_at = datetime('now') WHERE id = OLD.id;
+END;
+
 -- ============================================================
 -- 初始数据：插入艺术家默认信息（后台可修改）
 -- ============================================================
@@ -172,19 +193,6 @@ INSERT OR IGNORE INTO site_content (key, value) VALUES
 
 -- 导航
 ('nav.home',        'Home'),
--- ============================================================
--- 种子：艺术家基线档案
--- ============================================================
--- artist 表受 CHECK (id = 1) 约束，必须有且仅有一行 id = 1 的记录。
--- 缺这一行会导致：
---   1. GET /api/artist 直接返回 404（artist_not_found），首页/关于页拿不到资料；
---   2. PUT /api/admin/artist 执行 UPDATE ... WHERE id = 1 匹配不到任何行，
---      后台保存艺术家信息会"看起来成功但没生效"（静默无操作）。
--- 这里只写 name / name_en，其余字段走列默认值（空字符串、socials = '{}'），
--- 后台第一次保存会补全。INSERT OR IGNORE 保证重复执行不会报错。
--- ============================================================
-INSERT OR IGNORE INTO artist (id, name, name_en)
-VALUES (1, 'Tang Yibai', 'Tang Yibai');
 
 ('nav.works',       'Works'),
 ('nav.about',       'About'),
@@ -196,6 +204,9 @@ VALUES (1, 'Tang Yibai', 'Tang Yibai');
 ('site.description',    'Tang Yibai · Personal Art Portfolio · Painting & Visual Arts'),
 ('site.og_description', 'Painting and visual art showcase'),
 ('site.logo',           'Tang Yibai'),
+('site.favicon',         'https://mdl.artvee.com/assets/icon-350x350.png'),
+('site.logo_icon_light', 'https://mdl.artvee.com/assets/logow-4.svg'),
+('site.logo_icon_dark',  'https://mdl.artvee.com/assets/icon-350x350.png'),
 
 -- 首页 Hero
 ('hero.title',        'Tang Yibai'),
@@ -204,28 +215,27 @@ VALUES (1, 'Tang Yibai', 'Tang Yibai');
 ('hero.cta.primary',  'Browse Works'),
 ('hero.cta.secondary','Meet the Artist'),
 
+-- 首页第二屏导航背景图（后台「首页展示」可编辑；留空时前台自动取图）
+('home.nav.home.image',    'https://mdl.artvee.com/assets/bgs/abstract.jpg'),
+('home.nav.works.image',   'https://mdl.artvee.com/assets/bgs/landscape.jpg'),
+('home.nav.about.image',   'https://mdl.artvee.com/assets/bgs/figurative.jpg'),
+('home.nav.meetup.image',  'https://mdl.artvee.com/assets/bgs/posters.jpg'),
+('home.nav.contact.image', 'https://mdl.artvee.com/assets/bgs/still-life.jpg'),
+
 -- 首页 Hero 横图（三段式第一屏）
 -- image 为空时前台自动回退到精选作品首图；title/subtitle/cta 为空则不叠加文字与按钮，只保留纯图
-('home.hero.image',   ''),
-('home.hero.title',   ''),
-('home.hero.subtitle',''),
-('home.hero.cta',     'View the Collection'),
+('home.hero.image',   'https://mdl.artvee.com/assets/tmbg.jpg'),
+('home.hero.eyebrow', 'Discover the best in'),
+('home.hero.title',   'Classical & Modern Art'),
+('home.hero.subtitle','Browse and download high-resolution, public domain paintings, posters and illustrations'),
+('home.hero.cta',     ''),
 
 -- 首页 Featured 区块
-('featured.title',    'Featured Works'),
-('featured.subtitle', 'A selection of representative pieces · Click for details'),
-('featured.viewAll',  'View All Works →'),
 
 -- 首页「Selected Works」区块（三段式第二屏，对应 artvee 的 Dive into Books & Wall Charts）
 -- 内容取自 featured=1 的作品，后台在作品表单里勾选「精选」即可进首页
-('home.features.title',    'Selected Works'),
-('home.features.subtitle', 'A selection of recent pieces · Click for details'),
-('home.features.viewAll',  'View All Works →'),
 
 -- 首页「入口卡」区块（三段式第三屏：作品集 / 关于 / 线下交流，标题复用 nav.*）
-('home.entry.works.desc',  'Browse the full collection, filter by category.'),
-('home.entry.about.desc',  'Biography, studio practice and press.'),
-('home.entry.meetup.desc', 'Exhibitions, studio visits and in-person exchange.'),
 
 -- 作品列表页
 ('works.title',        'Works'),
@@ -315,7 +325,6 @@ VALUES (1, 'Tang Yibai', 'Tang Yibai');
 ('home.card.4.link',   ''),
 
 -- 首页入口区（第三屏：首页 / 作品 / 线下交流 / 联系我们，标题复用 nav.*）
-('home.entry.contact.desc', 'Commissions and press inquiries are welcome.'),
 
 ('common.backHome',         'Back to Home');
 

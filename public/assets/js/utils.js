@@ -6,6 +6,7 @@
 // 而 views.js 在 IIFE 初始化时就捕获 T，所以这些必须早于 views.js 加载）
 window.State = {
   category: 'all',
+  worksSearch: '',
   currentId: null,
   content: {},
   contentReady: null,

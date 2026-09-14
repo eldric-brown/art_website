@@ -34,62 +34,62 @@ window.Views = (function () {
     return badge ? '<div class="gallery-card-badges">' + badge + '</div>' : '';
   }
 
-  // 栏目瓦片：'all' 恒为首项，其余取后台启用中的栏目（按 sort_order 排好）。
-  function categoryTilesHtml(items, activeKey) {
-    const all = [{ key: 'all', name: T('category.all', 'All'), image: '' }];
+  // 作品页分类筛选：保持独立 Hash 路由，但视觉上只用简洁文字，不再使用大图瓦片。
+  function categoryFilterHtml(items, activeKey) {
+    const all = [{ key: 'all', name: T('category.all', 'All') }];
     const list = all.concat(items || []);
 
-    return '<section class="section section-tiles">' +
-      '<div class="container">' +
-        '<div class="category-tiles">' +
-          list.map(function (item) {
-            const active = item.key === activeKey ? ' active' : '';
-            const image = item.image
-              ? '<img class="category-tile-image" src="' + esc(item.image) +
-                '" alt="' + esc(item.name) + '" loading="lazy">'
-              : '<span class="category-tile-image category-tile-image-empty"></span>';
+    return '<nav class="collection-filters" aria-label="Artwork categories">' +
+      list.map(function (item) {
+        const active = item.key === activeKey;
+        const href = item.key === 'all'
+          ? '#/works'
+          : '#/works/category/' + encodeURIComponent(item.key);
 
-            return '<button type="button" class="category-tile' + active + '"' +
-              ' data-category="' + esc(item.key) + '">' +
-              image +
-              '<span class="category-tile-shade" aria-hidden="true"></span>' +
-              '<span class="category-tile-label">' + esc(item.name) + '</span>' +
-            '</button>';
-          }).join('') +
-        '</div>' +
-      '</div>' +
-    '</section>';
+        return '<a class="collection-filter' + (active ? ' active' : '') + '"' +
+          ' href="' + esc(href) + '"' +
+          (active ? ' aria-current="page"' : '') +
+          ' data-category="' + esc(item.key) + '">' +
+          esc(item.name) +
+        '</a>';
+      }).join('') +
+    '</nav>';
   }
 
-  // 首页第三屏：入口区（首页 / 作品 / 线下交流 / 联系我们）
-  function entryCardsSectionHtml() {
+  // 首页第二屏：主导航横向图片条（对应 artvee 的第一组 owlcontaine）。
+  function navigationTilesSectionHtml(images) {
     const cards = [
-      { href: '#/',        title: T('nav.home', 'Home'),        desc: '' },
-      { href: '#/works',   title: T('nav.works', 'Works'),      desc: T('home.entry.works.desc', 'Browse the full collection, filter by category.') },
-      { href: '#/meetup',  title: T('nav.meetup', 'Meet Up'),   desc: T('home.entry.meetup.desc', 'Exhibitions, studio visits and in-person exchange.') },
-      { href: '#/contact', title: T('nav.contact', 'Contact'),  desc: T('home.entry.contact.desc', 'Commissions and press inquiries are welcome.') }
+      { key: 'home', href: '#/', title: T('nav.home', 'Home') },
+      { key: 'works', href: '#/works', title: T('nav.works', 'Works') },
+      { key: 'about', href: '#/about', title: T('nav.about', 'About') },
+      { key: 'meetup', href: '#/meetup', title: T('nav.meetup', 'Meet Up') },
+      { key: 'contact', href: '#/contact', title: T('nav.contact', 'Contact') }
     ];
 
-    return '<section class="section section-alt">' +
-      '<div class="container">' +
-        '<div class="entry-grid">' +
+    return '<section class="owlcontaine owlcontaine-nav">' +
+      '<div class="owlcontaine-inner">' +
+        '<ul class="carousel__content nav-cards">' +
           cards.map(function (card) {
-            return '<a href="' + esc(card.href) + '" class="entry-card reveal">' +
-              '<div class="entry-card-inner">' +
-                '<h3 class="entry-card-title">' + esc(card.title) + '</h3>' +
-                (card.desc ? '<p class="entry-card-desc">' + esc(card.desc) + '</p>' : '') +
-                '<span class="entry-card-arrow" aria-hidden="true">→</span>' +
-              '</div>' +
-            '</a>';
+            const image = String((images && images[card.key]) || '').trim();
+            const imageHtml = image
+              ? '<img src="' + esc(image) + '" alt="' + esc(card.title) + '" loading="lazy">'
+              : '<span class="catogr-image catogr-image-empty" aria-hidden="true"></span>';
+
+            return '<li class="catogr">' +
+              '<a class="catogr-wrapp" href="' + esc(card.href) + '">' +
+                imageHtml +
+                '<span class="catogr-ovl" aria-hidden="true"></span>' +
+                '<h3 class="catogr-title">' + esc(card.title) + '</h3>' +
+              '</a>' +
+            '</li>';
           }).join('') +
-        '</div>' +
+        '</ul>' +
       '</div>' +
     '</section>';
   }
 
-  // 首页第二屏：内容卡（对应 artvee 的「Dive into Books & Wall Charts」）
+  // 首页第三屏：后台配置的内容轮播（对应 artvee 的 owlcontaine owlast）。
   // 数据源 site_content：home.cards.{title,subtitle,count} + home.card.N.{title,text,image,link}
-  // 后台在「首页展示」里自由增删；title 或 image 为空的卡前台不渲染。
   function contentCardsSectionHtml() {
     const count = parseInt(T('home.cards.count', '0'), 10);
     if (!Number.isInteger(count) || count < 1) return '';
@@ -112,30 +112,36 @@ window.Views = (function () {
     const sectionTitle = String(T('home.cards.title', '') || '').trim();
     const sectionSubtitle = String(T('home.cards.subtitle', '') || '').trim();
     const header = (sectionTitle || sectionSubtitle)
-      ? '<div class="section-header">' +
-          (sectionTitle ? '<h2 class="section-title">' + esc(sectionTitle) + '</h2>' : '') +
-          (sectionSubtitle ? '<p class="section-subtitle">' + esc(sectionSubtitle) + '</p>' : '') +
+      ? '<div class="owlcontaine-heading">' +
+          (sectionTitle ? '<h2 class="owlcontaine-title">' + esc(sectionTitle) + '</h2>' : '') +
+          (sectionSubtitle ? '<p class="owlcontaine-subtitle">' + esc(sectionSubtitle) + '</p>' : '') +
         '</div>'
       : '';
 
-    return '<section class="section">' +
+    return '<section class="owlcontaine owlast">' +
+      '<div class="owlcontaine-inner">' +
         header +
-        '<div class="container">' +
-          '<div class="content-cards">' +
+        '<div class="owl-carousel-shell" data-carousel>' +
+          '<button type="button" class="carousel__arrow arrow-prev" data-carousel-prev aria-label="Previous">‹</button>' +
+          '<button type="button" class="carousel__arrow arrow-next" data-carousel-next aria-label="Next">›</button>' +
+          '<ul class="carousel__content content-cards" data-carousel-track>' +
             cards.map(function (card) {
-              return '<a href="' + esc(card.link) + '" class="content-card reveal" tabindex="0">' +
-                '<span class="content-card-image">' +
-                  '<img src="' + esc(card.image) + '" alt="' + esc(card.title) + '" loading="lazy">' +
-                '</span>' +
-                '<span class="content-card-overlay">' +
-                  '<span class="content-card-title">' + esc(card.title) + '</span>' +
-                  (card.text ? '<span class="content-card-text">' + esc(card.text) + '</span>' : '') +
-                '</span>' +
-              '</a>';
+              return '<li>' +
+                '<a href="' + esc(card.link) + '" class="content-card reveal" tabindex="0">' +
+                  '<span class="content-card-image">' +
+                    '<img src="' + esc(card.image) + '" alt="' + esc(card.title) + '" loading="lazy">' +
+                  '</span>' +
+                  '<span class="content-card-overlay">' +
+                    '<span class="content-card-title">' + esc(card.title) + '</span>' +
+                    (card.text ? '<span class="content-card-text">' + esc(card.text) + '</span>' : '') +
+                  '</span>' +
+                '</a>' +
+              '</li>';
             }).join('') +
-          '</div>' +
+          '</ul>' +
         '</div>' +
-      '</section>';
+      '</div>' +
+    '</section>';
   }
 
   // 首页第一屏：优先 home.hero.image；为空回退到精选作品首图；
@@ -157,22 +163,26 @@ window.Views = (function () {
       '</section>';
     }
 
+    const eyebrow = (T('home.hero.eyebrow', '') || '').trim();
     const title = (T('home.hero.title', '') || '').trim();
     const subtitle = (T('home.hero.subtitle', '') || '').trim();
     const cta = (T('home.hero.cta', '') || '').trim();
 
     let overlay = '';
-    if (title || subtitle || cta) {
+    if (eyebrow || title || subtitle || cta) {
       overlay = '<div class="hero-image-overlay">' +
-        (title ? '<h1 class="hero-image-title">' + esc(title) + '</h1>' : '') +
-        (subtitle ? '<p class="hero-image-subtitle">' + esc(subtitle) + '</p>' : '') +
-        (cta ? '<a href="#/works" class="hero-image-cta">' + esc(cta) + ' →</a>' : '') +
+        '<div class="hero-image-copy">' +
+          (eyebrow ? '<p class="hero-image-eyebrow">' + esc(eyebrow) + '</p>' : '') +
+          (title ? '<h1 class="hero-image-title">' + esc(title) + '</h1>' : '') +
+          (subtitle ? '<p class="hero-image-subtitle">' + esc(subtitle) + '</p>' : '') +
+          (cta ? '<a href="#/works" class="hero-image-cta">' + esc(cta) + ' →</a>' : '') +
+        '</div>' +
       '</div>';
     }
 
     return '<section class="hero-image-section">' +
       '<figure class="hero-image-frame">' +
-        '<img class="hero-image" src="' + esc(src) + '" alt="' + esc(title) + '">' +
+        '<img class="hero-image" src="' + esc(src) + '" alt="' + esc(title || eyebrow) + '">' +
         overlay +
       '</figure>' +
     '</section>';
@@ -200,29 +210,55 @@ window.Views = (function () {
              '</section>';
     },
 
-    // ---------- 首页（三段式：hero 横图 / 内容卡 / 入口区）----------
+    // ---------- 首页（三段式：hero 横图 / owlcontaine 导航 / owlast 内容卡）----------
     home: async function () {
       document.body.dataset.view = 'home';
       let artist = null;
       let featured = [];
+      let latest = [];
+      let categories = [];
+      let meetups = [];
+
       try {
         const results = await Promise.all([
           window.API.getArtist().catch(function () { return null; }),
-          window.API.listArtworks({ featured: 1, limit: 1 })
+          window.API.listArtworks({ featured: 1, limit: 1 }).catch(function () { return { artworks: [] }; }),
+          window.API.listArtworks({ limit: 1 }).catch(function () { return { artworks: [] }; }),
+          window.loadCategories().catch(function () { return []; }),
+          window.API.listMeetups().catch(function () { return { items: [] }; })
         ]);
         artist = results[0];
         featured = results[1].artworks || [];
-      } catch (e) { console.warn('home load failed:', e); }
+        latest = results[2].artworks || [];
+        categories = results[3] || [];
+        meetups = results[4].items || [];
+      } catch (e) {
+        console.warn('home load failed:', e);
+      }
+
+      const heroImage = String(T('home.hero.image', '') || '').trim();
+      const homeImage = heroImage || firstImage(featured[0]) || firstImage(latest[0]);
+      const categoryWithImage = categories.find(function (item) { return item && item.image; });
+      const worksImage = (categoryWithImage && categoryWithImage.image) || firstImage(latest[0]) || homeImage;
+      const meetupImage = (meetups[0] && meetups[0].image) || homeImage;
+      const navImages = {
+        home: String(T('home.nav.home.image', homeImage) || '').trim(),
+        works: String(T('home.nav.works.image', worksImage) || '').trim(),
+        about: String(T('home.nav.about.image', (artist && artist.avatar) || homeImage) || '').trim(),
+        meetup: String(T('home.nav.meetup.image', meetupImage) || '').trim(),
+        contact: String(T('home.nav.contact.image', homeImage) || '').trim()
+      };
 
       return heroSectionHtml(artist, featured) +
-             contentCardsSectionHtml() +
-             entryCardsSectionHtml();
+             navigationTilesSectionHtml(navImages) +
+             contentCardsSectionHtml();
     },
     // ---------- 作品列表 ----------
-    // ---------- 作品列表：标题 + 栏目瓦片 + 作品网格 ----------
-    works: async function () {
+    // ---------- 作品列表：Van Gogh Museum 风格的简洁收藏页 ----------
+    works: async function (categoryKey) {
       document.body.dataset.view = 'works';
-      const category = window.State.category || 'all';
+      const category = categoryKey && categoryKey !== 'all' ? categoryKey : 'all';
+      window.State.category = category;
 
       const params = { limit: 200, offset: 0 };
       if (category && category !== 'all') params.category = category;
@@ -244,33 +280,51 @@ window.Views = (function () {
         catch (e3) { console.warn('categories retry failed:', e3); }
       }
 
-      const activeLabel = category === 'all'
-        ? T('works.title', 'Works')
-        : U.categoryName(category, categories);
+      const search = String(window.State.worksSearch || '').trim().toLowerCase();
+      const visibleArtworks = search
+        ? artworks.filter(function (art) {
+            const categoryLabel = U.getCategoryLabel(art.category);
+            return [
+              art.title,
+              art.description,
+              art.category,
+              categoryLabel,
+              art.year,
+              art.medium,
+              art.dimensions,
+              art.price
+            ].join(' ').toLowerCase().indexOf(search) !== -1;
+          })
+        : artworks;
 
-      const gridHtml = artworks.length
-        ? '<section class="section">' +
-            '<div class="container"><div class="gallery">' +
-              Views._renderGallery(artworks) +
-            '</div></div>' +
-          '</section>'
-        : Views.empty(
-            T('works.empty.title', 'No Works'),
-            category === 'all'
+      const countText = Tf('works.results', { count: visibleArtworks.length }, '{count} works');
+      const gridHtml = visibleArtworks.length
+        ? '<div class="collection-grid">' + Views._renderGallery(visibleArtworks) + '</div>'
+        : '<div class="collection-empty">' +
+            '<h2>' + esc(T('works.empty.title', 'No Works')) + '</h2>' +
+            '<p>' + esc(search ? 'No works match your search.' : (category === 'all'
               ? T('works.empty.subtitle', 'No published works yet.')
-              : 'No works in this category yet.'
-          );
+              : 'No works in this category yet.')) + '</p>' +
+          '</div>';
 
-      return '<section class="section">' +
-        '<div class="container">' +
-          '<div class="section-header">' +
-            '<h1 class="section-title">' + esc(activeLabel) + '</h1>' +
-            '<p class="section-subtitle">' + esc(T('works.subtitle', 'Browse the collection by category and year.')) + '</p>' +
+      return '<section class="collection-page">' +
+        '<div class="collection-page-inner">' +
+          '<header class="collection-page-header">' +
+            '<h1 class="collection-title">' + esc(T('works.title', 'Works')) + '</h1>' +
+            '<p class="collection-subtitle">' + esc(T('works.subtitle', 'Browse the collection by category and year.')) + '</p>' +
+          '</header>' +
+          '<div class="collection-toolbar">' +
+            '<label class="collection-search">' +
+              '<span class="visually-hidden">Search artworks</span>' +
+              '<input id="collection-search" type="search" autocomplete="off"' +
+                ' placeholder="Search artworks" value="' + esc(window.State.worksSearch || '') + '">' +
+            '</label>' +
+            '<p class="collection-count" id="collection-count">' + esc(countText) + '</p>' +
           '</div>' +
+          categoryFilterHtml(categories, category) +
+          gridHtml +
         '</div>' +
-      '</section>' +
-      categoryTilesHtml(categories, category) +
-      gridHtml;
+      '</section>';
     },
     artworkDetail: async function (id) {
       document.body.dataset.view = 'detail';
@@ -441,21 +495,37 @@ window.Views = (function () {
       return artworks.map(function (art) { return Views._card(art); }).join('');
     },
 
-    // 单张作品卡：角标由 badgeHtml 决定（已售 → Sold；在售且有价 → 价格）
+    // 单张作品卡：博物馆式无边框展示，图片完整居中，信息仅保留标题与年份/媒介。
     _card(art) {
       const images = art.images || [];
       const firstImage = Array.isArray(images) && images.length ? String(images[0]) : '';
+      const categoryLabel = U.getCategoryLabel(art.category);
+      const meta = [
+        art.year,
+        art.medium || categoryLabel,
+        Number(art.sold) === 1 ? T('work.sold', 'Sold') : ''
+      ].filter(Boolean).join(' · ');
+      const searchText = [
+        art.title,
+        art.description,
+        art.category,
+        categoryLabel,
+        art.year,
+        art.medium,
+        art.dimensions,
+        art.price
+      ].join(' ').toLowerCase();
 
-      return '<a href="#/works/' + esc(art.id) + '" class="gallery-card reveal" tabindex="0">' +
-        '<div class="gallery-card-image">' +
+      return '<a href="#/works/' + esc(art.id) + '" class="collection-card reveal"' +
+        ' data-collection-card data-search="' + esc(searchText) + '" tabindex="0">' +
+        '<div class="collection-card-image">' +
           (firstImage
             ? '<img src="' + esc(firstImage) + '" alt="' + esc(art.title) + '" loading="lazy">'
-            : '<div class="gallery-card-placeholder"></div>') +
-          badgeHtml(art) +
+            : '<span class="collection-card-placeholder" aria-hidden="true"></span>') +
         '</div>' +
-        '<div class="gallery-card-info">' +
-          '<h3 class="gallery-card-title">' + esc(art.title) + '</h3>' +
-          '<p class="gallery-card-meta">' + esc(art.year) + '</p>' +
+        '<div class="collection-card-info">' +
+          '<h3 class="collection-card-title">' + esc(art.title) + '</h3>' +
+          '<p class="collection-card-meta">' + esc(meta) + '</p>' +
         '</div>' +
       '</a>';
     },

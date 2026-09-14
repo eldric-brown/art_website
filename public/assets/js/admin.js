@@ -408,61 +408,163 @@
   }
 
   // ---------- 站点文案 ----------
-  // 前端所有 key 按分组显示，方便批量编辑
+  // 站点文案按“前台页面 -> 页面位置”组织。专用配置项不在本页重复出现：
+  // 首页图片/内容卡见「首页展示」，栏目名称见「栏目管理」，艺术家资料见「艺术家资料」。
+  function contentField(key, label, help, options) {
+    options = options || {};
+    return {
+      key: key,
+      label: label,
+      help: help,
+      wide: Boolean(options.wide),
+      defaultValue: options.defaultValue || ''
+    };
+  }
+
   const CONTENT_GROUPS = [
-    { title: '导航与站点元信息', keys: [
-      'nav.home', 'nav.works', 'nav.about', 'nav.meetup', 'nav.contact',
-      'site.title', 'site.description', 'site.og_description', 'site.logo'
-    ]},
-    { title: '首页 Hero 横图（三段式第一屏）', keys: [
-      'home.hero.image', 'home.hero.title', 'home.hero.subtitle', 'home.hero.cta',
-      'hero.title', 'hero.eyebrow', 'hero.subtitle',
-      'hero.cta.primary', 'hero.cta.secondary'
-    ]},
-    { title: '首页内容卡（第二屏「Dive into」区）', keys: [
-      'home.cards.title', 'home.cards.subtitle', 'home.cards.count',
-      'home.card.1.title', 'home.card.1.text', 'home.card.1.image', 'home.card.1.link',
-      'home.card.2.title', 'home.card.2.text', 'home.card.2.image', 'home.card.2.link',
-      'home.card.3.title', 'home.card.3.text', 'home.card.3.image', 'home.card.3.link',
-      'home.card.4.title', 'home.card.4.text', 'home.card.4.image', 'home.card.4.link'
-    ]},
-    { title: '首页入口区（第三屏）', keys: [
-      'home.entry.works.desc', 'home.entry.about.desc', 'home.entry.meetup.desc',
-      'home.entry.contact.desc'
-    ]},
-    { title: '首页精选（预留，暂不在首页展示）', keys: [
-      'home.features.title', 'home.features.subtitle', 'home.features.viewAll',
-      'featured.title', 'featured.subtitle', 'featured.viewAll'
-    ]},
-    { title: '作品列表与分类', keys: [
-      'works.title', 'works.subtitle', 'works.empty.title', 'works.empty.subtitle',
-      'category.all', 'category.oil', 'category.watercolor', 'category.sketch',
-      'category.ink', 'category.digital', 'category.photograph', 'category.other'
-    ]},
-    { title: '作品详情页', keys: [
-      'detail.back', 'detail.backBottom',
-      'detail.meta.category', 'detail.meta.year', 'detail.meta.medium',
-      'detail.meta.dimensions', 'detail.meta.published',
-      'detail.notFound.title', 'detail.notFound.subtitle', 'detail.noImages',
-      'work.sold', 'work.price'
-    ]},
-    { title: '关于与联系', keys: [
-      'about.unavailable',
-      'contact.title', 'contact.subtitle',
-      'contact.email.label', 'contact.wechat.label', 'contact.note', 'contact.empty'
-    ]},
-    { title: '线下交流页', keys: [
-      'meetup.title', 'meetup.subtitle', 'meetup.intro',
-      'meetup.item.date', 'meetup.item.location', 'meetup.empty'
-    ]},
-    { title: '页脚', keys: [
-      'footer.brand', 'footer.links.works', 'footer.links.about',
-      'footer.links.contact', 'footer.links.meetup', 'footer.links.admin', 'footer.copyright'
-    ]},
-    { title: '通用状态', keys: [
-      'common.loading', 'common.thumbnail',
-      'common.notFound.title', 'common.notFound.subtitle', 'common.backHome'
-    ]}
+    {
+      title: '全站导航与浏览器信息',
+      description: '控制顶部导航名称、首页导航图片条标题、浏览器标题，以及搜索引擎和社交分享摘要。',
+      page: '/#/',
+      pageLabel: '查看首页',
+      fields: [
+        contentField('nav.home', '导航：首页', '显示在顶部导航，以及首页第二屏的导航图片条中。'),
+        contentField('nav.works', '导航：作品', '显示在顶部导航、首页导航条和作品页入口中。'),
+        contentField('nav.about', '导航：关于', '显示在顶部导航和首页导航图片条中。'),
+        contentField('nav.meetup', '导航：线下交流', '显示在顶部导航、首页导航条和页脚入口中。'),
+        contentField('nav.contact', '导航：联系我们', '显示在顶部导航、首页导航条和页脚入口中。'),
+        contentField('site.logo', '左上角站点名称', '显示在前台左上角 Logo 文字位置。'),
+        contentField('site.logo_icon_light', '首页横图 Logo（浅色）', '首页顶部透明导航上的 Logo，建议白色 SVG/PNG。默认使用 Artvee 白色 Logo，可在后台随时替换。', { wide: true }),
+        contentField('site.logo_icon_dark', '其他页面 Logo（深色）', '作品、关于等其他页面左上角的 Logo，建议深色或彩色图标。默认使用 Artvee 图标。', { wide: true }),
+        contentField('site.favicon', '浏览器标签页图标', '显示在浏览器标签页和收藏夹中，建议正方形 PNG。', { wide: true }),
+        contentField('site.title', '浏览器页面标题', '显示在浏览器标签页、收藏名称和社交分享标题中。', { wide: true }),
+        contentField('site.description', '搜索引擎描述', '用于 HTML description，主要影响搜索结果摘要。', { wide: true }),
+        contentField('site.og_description', '分享卡片描述', '用于 Open Graph 描述，在社交平台分享链接时显示。', { wide: true })
+      ]
+    },
+    {
+      title: '首页 - 无横图时的文字兜底',
+      description: '仅在首页没有设置横图、且没有精选作品首图时显示。正常情况下首页第一屏只显示横图，这些文字不会出现在页面上。',
+      page: '/#/',
+      pageLabel: '查看首页',
+      fields: [
+        contentField('hero.eyebrow', '文字首页：上方小标题', '无横图模式下的顶部辅助文字。'),
+        contentField('hero.title', '文字首页：主标题', '无横图模式下的最大标题。'),
+        contentField('hero.subtitle', '文字首页：说明文字', '显示在主标题下方。', { wide: true }),
+        contentField('hero.cta.primary', '文字首页：主按钮文字', '例如“Browse Works”。'),
+        contentField('hero.cta.secondary', '文字首页：次按钮文字', '例如“Meet the Artist”。')
+      ]
+    },
+    {
+      title: '作品列表页',
+      description: '控制作品集合页的大标题、说明、搜索结果数量和空状态。搜索结果中的数字会自动替换。',
+      page: '/#/works',
+      pageLabel: '查看作品页',
+      fields: [
+        contentField('works.title', '作品页大标题', '显示在作品页最上方，例如 Works 或 Collection。'),
+        contentField('works.subtitle', '作品页说明', '显示在大标题下方。', { wide: true }),
+        contentField('works.results', '作品数量文案', '使用 {count} 代表实时作品数量，例如“{count} works”。', { defaultValue: '{count} works' }),
+        contentField('works.empty.title', '没有作品时的标题', '当当前筛选没有任何作品时显示。'),
+        contentField('works.empty.subtitle', '没有作品时的说明', '显示在空状态标题下方。', { wide: true })
+      ]
+    },
+    {
+      title: '作品分类名称（兜底）',
+      description: '作品页分类名称优先读取「栏目管理」中的名称。这里只用于栏目被停用、删除或加载失败时的兜底，以及作品详情页的分类显示。',
+      page: '/#/works',
+      pageLabel: '查看分类页',
+      fields: [
+        contentField('category.all', '分类兜底：全部'),
+        contentField('category.oil', '分类兜底：油画'),
+        contentField('category.watercolor', '分类兜底：水彩'),
+        contentField('category.sketch', '分类兜底：素描'),
+        contentField('category.ink', '分类兜底：中国画'),
+        contentField('category.digital', '分类兜底：数字艺术'),
+        contentField('category.photograph', '分类兜底：摄影'),
+        contentField('category.other', '分类兜底：其他')
+      ]
+    },
+    {
+      title: '作品详情页',
+      description: '控制单件作品详情页的返回按钮、信息字段名称、价格/售出标签和异常状态。',
+      page: '/#/works/1',
+      pageLabel: '查看示例详情',
+      fields: [
+        contentField('detail.back', '详情页：返回作品列表按钮', '显示在详情页左上角。'),
+        contentField('detail.backBottom', '详情页：底部返回按钮', '显示在详情信息区域底部。'),
+        contentField('detail.meta.category', '详情字段：分类', '作品信息栏中的字段名称。'),
+        contentField('detail.meta.year', '详情字段：年份', '作品信息栏中的字段名称。'),
+        contentField('detail.meta.medium', '详情字段：媒介', '作品信息栏中的字段名称。'),
+        contentField('detail.meta.dimensions', '详情字段：尺寸', '作品信息栏中的字段名称。'),
+        contentField('detail.meta.published', '详情字段：发布日期', '作品信息栏中的字段名称。'),
+        contentField('work.sold', '详情页：已售标签', '作品标记为已售时显示。'),
+        contentField('work.price', '详情页：价格字段名', '作品填写价格时显示。'),
+        contentField('detail.notFound.title', '详情不存在：标题', '作品下架、删除或链接错误时显示。'),
+        contentField('detail.notFound.subtitle', '详情不存在：说明', '显示在错误标题下方。', { wide: true }),
+        contentField('detail.noImages', '详情无图片时的提示', '作品数据没有图片时显示。', { wide: true })
+      ]
+    },
+    {
+      title: '关于页面',
+      description: '这里只控制关于页加载不到艺术家资料时的提示。姓名、头像、简介和社交链接请使用左侧「艺术家资料」菜单修改。',
+      page: '/#/about',
+      pageLabel: '查看关于页',
+      fields: [
+        contentField('about.unavailable', '艺术家资料加载失败提示', '只有艺术家资料接口不可用时才显示。', { wide: true })
+      ]
+    },
+    {
+      title: '联系页面',
+      description: '控制联系页的标题、说明和 Email / 微信字段名称。Email 和微信的具体内容在「艺术家资料」中修改。',
+      page: '/#/contact',
+      pageLabel: '查看联系页',
+      fields: [
+        contentField('contact.title', '联系页标题', '显示在页面顶部。'),
+        contentField('contact.subtitle', '联系页说明', '显示在标题下方。', { wide: true }),
+        contentField('contact.email.label', '联系字段：Email 标签'),
+        contentField('contact.wechat.label', '联系字段：微信标签'),
+        contentField('contact.note', '无联系方式时的提示标题'),
+        contentField('contact.empty', '无联系方式时的说明', '', { wide: true })
+      ]
+    },
+    {
+      title: '线下交流页面',
+      description: '控制线下交流页的标题、介绍和每个条目的日期/地点字段名。具体活动内容请使用左侧「线下交流」菜单修改。',
+      page: '/#/meetup',
+      pageLabel: '查看线下交流页',
+      fields: [
+        contentField('meetup.title', '页面大标题'),
+        contentField('meetup.subtitle', '页面说明', '', { wide: true }),
+        contentField('meetup.intro', '列表上方介绍', '可留空。支持普通文字。', { wide: true }),
+        contentField('meetup.item.date', '活动字段：日期标签'),
+        contentField('meetup.item.location', '活动字段：地点标签'),
+        contentField('meetup.empty', '没有活动时的提示', '', { wide: true })
+      ]
+    },
+    {
+      title: '全站页脚',
+      description: '控制所有页面底部 Footer 的品牌文字、链接名称和版权文字。{year} 会自动替换为当前年份。',
+      fields: [
+        contentField('footer.brand', '页脚品牌文字'),
+        contentField('footer.links.works', '页脚链接：全部作品'),
+        contentField('footer.links.about', '页脚链接：关于'),
+        contentField('footer.links.contact', '页脚链接：联系'),
+        contentField('footer.links.meetup', '页脚链接：线下交流'),
+        contentField('footer.links.admin', '页脚链接：后台入口'),
+        contentField('footer.copyright', '版权文字', '使用 {year} 自动显示当前年份。', { wide: true })
+      ]
+    },
+    {
+      title: '通用状态与错误提示',
+      description: '这些文字会在多个页面复用，包括加载、灯箱缩略图、404 页面和返回首页按钮。',
+      fields: [
+        contentField('common.loading', '加载中提示'),
+        contentField('common.thumbnail', '图片缩略图说明'),
+        contentField('common.notFound.title', '404 页面标题'),
+        contentField('common.notFound.subtitle', '404 页面说明', '', { wide: true }),
+        contentField('common.backHome', '返回首页按钮文字')
+      ]
+    }
   ];
 
   async function loadSiteContent() {
@@ -477,22 +579,57 @@
       for (const key in content) {
         state.contentOriginal[key] = content[key].value;
       }
+      CONTENT_GROUPS.forEach(function (group) {
+        group.fields.forEach(function (field) {
+          if (!(field.key in state.contentOriginal)) {
+            state.contentOriginal[field.key] = field.defaultValue;
+          }
+        });
+      });
 
-      container.innerHTML = CONTENT_GROUPS.map(function (group) {
-        const rows = group.keys.map(function (key) {
-          const value = content[key] ? content[key].value : '';
-          return '<div class="field-group field">' +
-            '<label style="font-family:monospace;font-size:12px;color:var(--color-text-secondary);">' +
-              escapeHtml(key) +
+      const overview = '<div class="content-overview">' +
+        '<h3>配置位置说明</h3>' +
+        '<p>本页只管理费用通用文案。以下内容有专用配置菜单：</p>' +
+        '<ul>' +
+          '<li><strong>首页横图、第二屏导航背景图、内容轮播卡</strong>：请使用左侧「首页展示」。</li>' +
+          '<li><strong>作品分类名称、排序和底图</strong>：请使用左侧「栏目管理」。</li>' +
+          '<li><strong>艺术家姓名、简介、头像、Email、微信</strong>：请使用左侧「艺术家资料」。</li>' +
+          '<li><strong>线下活动内容</strong>：请使用左侧「线下交流」。</li>' +
+        '</ul>' +
+      '</div>';
+
+      container.innerHTML = overview + CONTENT_GROUPS.map(function (group) {
+        const pageLink = group.page
+          ? '<a class="content-page-link" href="' + escapeHtml(group.page) + '" target="_blank" rel="noopener">' +
+              escapeHtml(group.pageLabel || '查看前台页面') + ' ↗</a>'
+          : '';
+        const rows = group.fields.map(function (field) {
+          const entry = content[field.key];
+          const value = entry ? entry.value : field.defaultValue;
+          const inputId = 'content-' + field.key.replace(/\./g, '-');
+
+          return '<div class="content-field' + (field.wide ? ' wide' : '') + '">' +
+            '<label for="' + escapeHtml(inputId) + '">' +
+              '<span class="content-field-title">' + escapeHtml(field.label) + '</span>' +
+              '<code class="content-field-key">' + escapeHtml(field.key) + '</code>' +
             '</label>' +
-            '<input type="text" data-content-key="' + escapeHtml(key) + '" value="' +
-              escapeHtml(value).replace(/"/g, '&quot;') + '">' +
+            (field.help ? '<p class="content-field-help">' + escapeHtml(field.help) + '</p>' : '') +
+            '<input id="' + escapeHtml(inputId) + '" type="text"' +
+              ' data-content-key="' + escapeHtml(field.key) + '"' +
+              ' value="' + escapeHtml(value || '').replace(/"/g, '&quot;') + '">' +
           '</div>';
         }).join('');
-        return '<fieldset style="border:1px solid var(--color-border);border-radius:8px;padding:12px 16px;margin-bottom:16px;">' +
-               '<legend style="font-weight:600;padding:0 6px;">' + escapeHtml(group.title) + '</legend>' +
-               '<div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' + rows + '</div>' +
-             '</fieldset>';
+
+        return '<section class="content-group">' +
+          '<div class="content-group-header">' +
+            '<div>' +
+              '<h3>' + escapeHtml(group.title) + '</h3>' +
+              (group.description ? '<p>' + escapeHtml(group.description) + '</p>' : '') +
+            '</div>' +
+            pageLink +
+          '</div>' +
+          '<div class="content-fields">' + rows + '</div>' +
+        '</section>';
       }).join('');
     } catch (e) {
       container.innerHTML = '<div class="admin-empty"><h3>加载失败</h3><p>' + escapeHtml(e.message) + '</p></div>';
@@ -774,16 +911,50 @@
   }
 
   // ---------- 首页展示 ----------
+  const HOME_NAV_IMAGE_KEYS = [
+    { key: 'home', inputId: 'home-nav-home-image' },
+    { key: 'works', inputId: 'home-nav-works-image' },
+    { key: 'about', inputId: 'home-nav-about-image' },
+    { key: 'meetup', inputId: 'home-nav-meetup-image' },
+    { key: 'contact', inputId: 'home-nav-contact-image' }
+  ];
   const HOME_CARD_FIELDS = ['title', 'text', 'image', 'link'];
   const HOME_CARD_PLACEHOLDERS = {
     title: '如：Studio Notes',
     text: '如：Sketches and process behind the finished pieces.',
     image: 'https://...',
-    link: '如：#/works 或 #/works/1 或 https://example.com'
+    link: '详情页链接，如：#/works/1'
   };
 
   function blankHomeCard() {
     return { title: '', text: '', image: '', link: '#/works' };
+  }
+
+  function updateHomeNavImagePreview(input) {
+    if (!input) return;
+    const preview = document.getElementById(input.dataset.homeNavPreview || '');
+    if (!preview) return;
+
+    const url = input.value.trim();
+    preview.innerHTML = '';
+    if (!url) {
+      preview.innerHTML = '<span>留空：自动取图</span>';
+      return;
+    }
+
+    const img = document.createElement('img');
+    img.alt = '';
+    img.src = url;
+    img.onerror = function () {
+      preview.innerHTML = '<span>图片无法加载</span>';
+    };
+    preview.appendChild(img);
+  }
+
+  function setupHomeNavImagePreviews() {
+    $$('[data-home-nav-image]').forEach(function (input) {
+      input.oninput = function () { updateHomeNavImagePreview(input); };
+    });
   }
 
   async function loadHomeConfig() {
@@ -799,11 +970,19 @@
     const val = function (key) { return content[key] ? content[key].value : ''; };
 
     $('#home-hero-image').value = val('home.hero.image');
+    $('#home-hero-eyebrow').value = val('home.hero.eyebrow');
     $('#home-hero-title').value = val('home.hero.title');
     $('#home-hero-subtitle').value = val('home.hero.subtitle');
     $('#home-hero-cta').value = val('home.hero.cta');
     $('#home-cards-title').value = val('home.cards.title');
     $('#home-cards-subtitle').value = val('home.cards.subtitle');
+
+    HOME_NAV_IMAGE_KEYS.forEach(function (item) {
+      const input = document.getElementById(item.inputId);
+      if (!input) return;
+      input.value = val('home.nav.' + item.key + '.image');
+      updateHomeNavImagePreview(input);
+    });
 
     const count = parseInt(val('home.cards.count') || '0', 10);
     state.homeCards = [];
@@ -866,6 +1045,7 @@
 
     const payload = {
       'home.hero.image': $('#home-hero-image').value.trim(),
+      'home.hero.eyebrow': $('#home-hero-eyebrow').value.trim(),
       'home.hero.title': $('#home-hero-title').value.trim(),
       'home.hero.subtitle': $('#home-hero-subtitle').value.trim(),
       'home.hero.cta': $('#home-hero-cta').value.trim(),
@@ -873,6 +1053,11 @@
       'home.cards.subtitle': $('#home-cards-subtitle').value.trim(),
       'home.cards.count': String(kept.length)
     };
+
+    HOME_NAV_IMAGE_KEYS.forEach(function (item) {
+      const input = document.getElementById(item.inputId);
+      payload['home.nav.' + item.key + '.image'] = input ? input.value.trim() : '';
+    });
 
     kept.forEach(function (card, i) {
       const n = i + 1;
@@ -917,8 +1102,53 @@
         if (tab === 'categories') loadCategories();
         if (tab === 'meetup') loadMeetups();
         if (tab === 'home') loadHomeConfig();
+        if (tab === 'account') loadAccount();
       };
     });
+  }
+
+  // ---------- 账号安全 ----------
+  async function loadAccount() {
+    const usernameEl = $('#account-username');
+    try {
+      const data = await api('/api/admin/account');
+      if (usernameEl) usernameEl.textContent = data.user.username;
+    } catch (e) {
+      if (usernameEl) usernameEl.textContent = '加载失败';
+      toast(e.message, 'error');
+    }
+  }
+
+  async function savePassword(e) {
+    e.preventDefault();
+    const form = $('#password-form');
+    const fd = new FormData(form);
+    const currentPassword = String(fd.get('current_password') || '');
+    const newPassword = String(fd.get('new_password') || '');
+    const confirmPassword = String(fd.get('confirm_password') || '');
+
+    if (newPassword.length < 8) {
+      toast('新密码至少需要 8 位', 'error');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast('两次输入的新密码不一致', 'error');
+      return;
+    }
+
+    try {
+      await api('/api/admin/password', {
+        method: 'PUT',
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword
+        })
+      });
+      form.reset();
+      toast('密码修改成功', 'success');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
   }
 
   // ---------- 退出登录 ----------
@@ -937,6 +1167,7 @@
   function init() {
     setupTabs();
     setupImageUrls();
+    setupHomeNavImagePreviews();
     setupLogout();
 
     $('#btn-new-artwork').onclick = openNewModal;
@@ -950,6 +1181,7 @@
 
     $('#artwork-form').onsubmit = saveArtwork;
     $('#artist-form').onsubmit = saveArtist;
+    $('#password-form').onsubmit = savePassword;
     $('#btn-reset-artist').onclick = loadArtist;
     $('#btn-save-content').onclick = saveSiteContent;
     $('#btn-reset-content').onclick = loadSiteContent;

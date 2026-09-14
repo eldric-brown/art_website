@@ -22,6 +22,24 @@ function applySiteMeta(content) {
   }
 }
 
+// 应用站点图标 / Logo（site.favicon / site.logo_icon_light / site.logo_icon_dark）
+function applyVisualConfig(content) {
+  const favicon = content['site.favicon'];
+  if (favicon) {
+    const link = document.getElementById('site-favicon');
+    if (link) link.href = favicon;
+  }
+  document.querySelectorAll('[data-src-config]').forEach(function (el) {
+    const key = el.getAttribute('data-src-config');
+    const value = key && content[key];
+    if (value) {
+      el.src = value;
+      el.style.display = '';
+      if (el.parentNode) el.parentNode.classList.remove('logo-mark-fallback');
+    }
+  });
+}
+
 // 应用导航栏与页脚的文案（HTML 里用 data-text="key" 标记，由 JS 注入）
 function applyChromeTexts(content) {
   // 通用：所有带 data-text="key" 的元素
@@ -86,6 +104,7 @@ function applyChromeTexts(content) {
     Promise.all([loadSiteContent(), window.loadCategories()]).then(function () {
       applySiteMeta(window.State.content);
       applyChromeTexts(window.State.content);
+      applyVisualConfig(window.State.content);
       window.Router.navigate();
     });
   }

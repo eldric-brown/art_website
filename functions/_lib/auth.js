@@ -1,5 +1,8 @@
 const COOKIE_NAME = 'art_session';
 const SESSION_TTL_SECONDS = 24 * 60 * 60;
+const PBKDF2_ITERATIONS = 210000;
+const PASSWORD_KEY_BYTES = 32;
+const PASSWORD_SALT_BYTES = 16;
 const encoder = new TextEncoder();
 
 function getSessionSecret(env) {
@@ -11,6 +14,24 @@ function randomHex(byteLength) {
   const bytes = new Uint8Array(byteLength);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function bytesToBase64Url(bytes) {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64UrlToBytes(value) {
+  if (typeof value !== 'string' || !value) throw new Error('invalid base64url value');
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
 }
 
 async function hmacBytes(value, secret) {
@@ -75,6 +96,55 @@ async function sha256Bytes(value) {
   return new Uint8Array(digest);
 }
 
+async function derivePassword(password, salt, iterations) {
+  const material = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(password),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits']
+  );
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      hash: 'SHA-256',
+      salt: base64UrlToBytes(salt),
+      iterations
+    },
+    material,
+    PASSWORD_KEY_BYTES * 8
+  );
+  return bytesToBase64Url(new Uint8Array(bits));
+}
+
+export async function createPasswordRecord(password) {
+  const saltBytes = new Uint8Array(PASSWORD_SALT_BYTES);
+  crypto.getRandomValues(saltBytes);
+  const salt = bytesToBase64Url(saltBytes);
+  const hash = await derivePassword(password, salt, PBKDF2_ITERATIONS);
+  return {
+    hash,
+    salt,
+    iterations: PBKDF2_ITERATIONS,
+    algorithm: 'PBKDF2-SHA256'
+  };
+}
+
+export async function verifyPassword(password, user) {
+  if (!user || typeof password !== 'string') return false;
+  if (user.password_algo && user.password_algo !== 'PBKDF2-SHA256') return false;
+  const iterations = Number(user.password_iterations);
+  if (!Number.isInteger(iterations) || iterations < 10000 || iterations > 1000000) return false;
+
+  try {
+    const actual = base64UrlToBytes(await derivePassword(password, user.password_salt, iterations));
+    const expected = base64UrlToBytes(user.password_hash);
+    return timingSafeEqual(actual, expected);
+  } catch {
+    return false;
+  }
+}
+
 export async function secureStringEqual(input, expected) {
   if (typeof input !== 'string' || typeof expected !== 'string') return false;
   const [inputHash, expectedHash] = await Promise.all([
@@ -84,12 +154,13 @@ export async function secureStringEqual(input, expected) {
   return timingSafeEqual(inputHash, expectedHash);
 }
 
-export async function createSessionCookie(request, env) {
+export async function createSessionCookie(request, env, userId) {
   const secret = getSessionSecret(env);
   if (!secret) throw new Error('SESSION_SECRET or ADMIN_PASSWORD is not configured');
+  if (!Number.isSafeInteger(userId) || userId <= 0) throw new Error('invalid user id');
 
   const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS;
-  const payload = `${expiresAt}.${randomHex(16)}`;
+  const payload = `${expiresAt}.${randomHex(16)}.${userId}`;
   const signature = bytesToHex(await hmacBytes(payload, secret));
   const token = `${payload}.${signature}`;
 
@@ -100,32 +171,44 @@ export function clearSessionCookie(request) {
   return serializeCookie('', request, 0);
 }
 
-export async function hasValidSession(request, env) {
+async function readSession(request, env) {
   const secret = getSessionSecret(env);
-  if (!secret) return false;
+  if (!secret) return null;
 
   const token = getCookie(request, COOKIE_NAME);
   const parts = token.split('.');
-  if (parts.length !== 3) return false;
+  if (parts.length !== 4) return null;
 
-  const [expiresRaw, nonce, providedSignature] = parts;
+  const [expiresRaw, nonce, userIdRaw, providedSignature] = parts;
   const expiresAt = Number(expiresRaw);
+  const userId = Number(userIdRaw);
   const now = Math.floor(Date.now() / 1000);
 
   if (!Number.isInteger(expiresAt) || expiresAt <= now || expiresAt > now + SESSION_TTL_SECONDS + 300) {
-    return false;
+    return null;
   }
+  if (!Number.isSafeInteger(userId) || userId <= 0) return null;
   if (!/^[a-f0-9]{32}$/.test(nonce) || !/^[a-f0-9]{64}$/.test(providedSignature)) {
-    return false;
+    return null;
   }
 
   try {
-    const expectedSignature = await hmacBytes(`${expiresRaw}.${nonce}`, secret);
+    const expectedSignature = await hmacBytes(`${expiresRaw}.${nonce}.${userIdRaw}`, secret);
     const providedBytes = new Uint8Array(
       providedSignature.match(/.{2}/g).map((hex) => parseInt(hex, 16))
     );
-    return timingSafeEqual(expectedSignature, providedBytes);
+    if (!timingSafeEqual(expectedSignature, providedBytes)) return null;
+    return { userId, expiresAt };
   } catch {
-    return false;
+    return null;
   }
+}
+
+export async function getSessionUserId(request, env) {
+  const session = await readSession(request, env);
+  return session ? session.userId : null;
+}
+
+export async function hasValidSession(request, env) {
+  return Boolean(await readSession(request, env));
 }

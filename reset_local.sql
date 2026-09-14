@@ -22,10 +22,11 @@ DELETE FROM view_logs;
 DELETE FROM artworks;
 DELETE FROM meetup_items;
 DELETE FROM artist;
+DELETE FROM users;
 DELETE FROM site_content;
 DELETE FROM categories;
 
 -- AUTOINCREMENT 自增序号回 1，方便演示时得到 id = 1, 2, 3 ...
 -- artist 表没有 AUTOINCREMENT，sqlite_sequence 里没有它，删不到也不报错。
 DELETE FROM sqlite_sequence
-WHERE name IN ('artworks', 'view_logs', 'meetup_items', 'categories');
+WHERE name IN ('artworks', 'view_logs', 'meetup_items', 'categories', 'users');

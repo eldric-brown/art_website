@@ -18,14 +18,15 @@ html {
 }
 
 :root {
-  --color-bg: #ffffff;
-  --color-bg-alt: #f5f5f7;
-  --color-text: #1d1d1f;
-  --color-text-secondary: #6e6e73;
-  --color-text-tertiary: #86868b;
-  --color-border: #d2d2d7;
-  --color-accent: #0066cc;
-  --color-accent-hover: #0055b3;
+  --color-bg: #f6f3ec;
+  --color-surface: #fffdf8;
+  --color-bg-alt: #ebe5da;
+  --color-text: #201d18;
+  --color-text-secondary: #6d675e;
+  --color-text-tertiary: #8c867b;
+  --color-border: #d8d0c3;
+  --color-accent: #9a5538;
+  --color-accent-hover: #78402b;
 
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
                "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB",
@@ -103,14 +104,18 @@ ul { list-style: none; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: var(--color-text);
-  color: white;
+  width: 28px;
+  height: 28px;
+  color: var(--color-text);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 700;
+  overflow: hidden;
 }
+
+.logo-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.logo-mark-letter { display: none; }
+.logo-mark-fallback .logo-mark-letter { display: block; }
 
 .nav-links { display: flex; gap: 28px; }
 
@@ -165,7 +170,7 @@ ul { list-style: none; }
   transform: translateX(-50%);
   width: min(900px, 110vw);
   height: 640px;
-  background: radial-gradient(circle at center, rgba(0, 102, 204, 0.07) 0%, rgba(0, 102, 204, 0) 65%);
+  background: radial-gradient(circle at center, rgba(154, 85, 56, 0.07) 0%, rgba(154, 85, 56, 0) 65%);
   pointer-events: none;
   z-index: 0;
 }
@@ -690,7 +695,7 @@ ul { list-style: none; }
 .btn-primary:hover {
   background: var(--color-accent-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+  box-shadow: 0 4px 12px rgba(154, 85, 56, 0.3);
 }
 
 .btn-secondary {
@@ -700,7 +705,7 @@ ul { list-style: none; }
   border-radius: 980px;
 }
 
-.btn-secondary:hover { background: rgba(0, 102, 204, 0.08); }
+.btn-secondary:hover { background: rgba(154, 85, 56, 0.08); }
 
 /* ---- 16. 首页三段式新增块 ---- */
 
@@ -1127,3 +1132,564 @@ ul { list-style: none; }
   .content-card-title { font-size: 17px; }
   .gallery { gap: var(--space-lg) var(--space-sm); }
 }
+
+
+/* ---- 21. 首页 Artvee 风格三段式 ---- */
+body[data-view="home"] .nav-links { display: none; }
+body[data-view="home"] .nav-inner {
+  justify-content: flex-start;
+  max-width: none;
+  padding: 0 28px;
+}
+
+/* 首页 Logo 放大（白色横版 SVG，按高度自适应宽度） */
+body[data-view="home"] .nav-logo .logo-mark {
+  width: auto;
+  height: 44px;
+}
+
+body[data-view="home"] .nav-logo .logo-mark img {
+  width: auto;
+  height: 100%;
+  object-fit: contain;
+  object-position: left center;
+}
+
+/* 首页导航透明叠加在横图上（Artvee 风格），Logo 用浅色版 */
+body[data-view="home"] .nav {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  background: linear-gradient(rgba(0,0,0,.38) 0%, rgba(0,0,0,0) 100%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom: none;
+}
+body[data-view="home"] .nav .logo-img-light { display: block; }
+body[data-view="home"] .nav .logo-img-dark { display: none; }
+body[data-view="home"] .nav .logo-text { color: #fff; }
+
+body[data-view="home"] .hero-image {
+  height: clamp(320px, 32.3vw, 520px);
+}
+
+.owlcontaine {
+  padding: 10px 0 0;
+}
+
+.owlcontaine-inner {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.nav-cards {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0;
+  scrollbar-width: none;
+}
+
+.nav-cards::-webkit-scrollbar,
+.owlcontaine .content-cards::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-cards .catogr {
+  flex: 1 0 calc(20% - 8px);
+  min-width: 190px;
+  height: 50px;
+}
+
+.catogr-wrapp {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #252525;
+}
+
+.catogr-wrapp img,
+.catogr-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .7s var(--ease-out);
+}
+
+.catogr-image-empty {
+  background: linear-gradient(135deg, #777 0%, #222 100%);
+}
+
+.catogr-ovl {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .32);
+  transition: background .25s var(--ease);
+}
+
+.catogr-title {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 400;
+  text-align: center;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, .45);
+}
+
+.catogr-wrapp:hover img { transform: scale(1.04); }
+.catogr-wrapp:hover .catogr-ovl { background: rgba(0, 0, 0, .18); }
+
+.owlcontaine.owlast {
+  padding: 30px 0 40px;
+}
+
+.owlcontaine-heading {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.owlcontaine-title {
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -.02em;
+}
+
+.owlcontaine-subtitle {
+  margin-top: 6px;
+  color: var(--color-text-secondary);
+  font-size: 15px;
+}
+
+.owl-carousel-shell {
+  position: relative;
+}
+
+.owlcontaine .content-cards {
+  display: flex;
+  grid-template-columns: none;
+  gap: 20px;
+  overflow-x: auto;
+  padding: 0 0 12px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.owlcontaine .content-cards > li {
+  flex: 0 0 clamp(240px, 25vw, 310px);
+  scroll-snap-align: start;
+}
+
+.owlcontaine .content-card {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.owlcontaine .content-card:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.owlcontaine .content-card-image img {
+  transition: transform .8s var(--ease-out);
+}
+
+.owlcontaine .content-card:hover .content-card-image img {
+  transform: scale(1.045);
+}
+
+.owlcontaine .content-card-overlay {
+  padding: 72px 18px 18px;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, .12) 42%,
+    rgba(0, 0, 0, .72) 100%
+  );
+}
+
+.owlcontaine .content-card-title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.owlcontaine .content-card-text {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.carousel__arrow {
+  position: absolute;
+  z-index: 3;
+  top: -48px;
+  right: 0;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0, 0, 0, .16);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .94);
+  color: #222;
+  font-size: 24px;
+  line-height: 1;
+  transition: opacity .2s var(--ease), transform .2s var(--ease);
+}
+
+.carousel__arrow.arrow-prev { right: 42px; }
+.carousel__arrow:hover:not(:disabled) { transform: scale(1.06); }
+.carousel__arrow:disabled { opacity: .22; cursor: default; }
+
+@media (max-width: 768px) {
+  .owlcontaine-inner { padding: 0 12px; }
+  .nav-cards .catogr { flex-basis: 210px; }
+  .owlcontaine-heading { text-align: left; }
+  .carousel__arrow { display: none; }
+  .owlcontaine .content-cards > li { flex-basis: min(78vw, 280px); }
+}
+
+
+/* ---- 22. 作品页：Van Gogh Museum 风格收藏网格 ---- */
+.collection-page {
+  padding: 56px 0 96px;
+  background: #fff;
+}
+
+.collection-page-inner {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.collection-page-header {
+  margin-bottom: 36px;
+}
+
+.collection-title {
+  color: #111;
+  font-size: clamp(48px, 6.6vw, 88px);
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -.045em;
+}
+
+.collection-subtitle {
+  max-width: 720px;
+  margin-top: 16px;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.collection-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 18px 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.collection-search {
+  flex: 1 1 420px;
+  max-width: 640px;
+}
+
+.collection-search input {
+  width: 100%;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid #a1a1a6;
+  border-radius: 0;
+  background: transparent;
+  color: #111;
+  font: inherit;
+  font-size: 16px;
+  outline: none;
+}
+
+.collection-search input::placeholder {
+  color: #8e8e93;
+}
+
+.collection-search input:focus {
+  border-bottom-color: #111;
+}
+
+.collection-count {
+  flex: 0 0 auto;
+  padding-bottom: 11px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.collection-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin: 24px 0 38px;
+}
+
+.collection-filter {
+  position: relative;
+  padding: 5px 0;
+  color: #666;
+  font-size: 14px;
+  transition: color .2s var(--ease);
+}
+
+.collection-filter:hover {
+  color: #111;
+}
+
+.collection-filter.active {
+  color: #111;
+  font-weight: 600;
+}
+
+.collection-filter.active::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: #111;
+}
+
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 48px 22px;
+}
+
+.collection-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  color: #111;
+}
+
+.collection-card[hidden] {
+  display: none;
+}
+
+.collection-card-image {
+  display: flex;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #f5f5f7;
+}
+
+.collection-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .55s var(--ease-out);
+}
+
+.collection-card:hover .collection-card-image img {
+  transform: scale(1.025);
+}
+
+.collection-card-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ed 100%);
+}
+
+.collection-card-info {
+  padding-top: 14px;
+}
+
+.collection-card-title {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.28;
+  letter-spacing: -.015em;
+}
+
+.collection-card-meta {
+  margin-top: 6px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.collection-empty {
+  padding: 78px 0 110px;
+  text-align: center;
+}
+
+.collection-empty h2 {
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.collection-empty p {
+  margin-top: 8px;
+  color: var(--color-text-secondary);
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+@media (max-width: 1120px) {
+  .collection-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 820px) {
+  .collection-page { padding: 40px 0 72px; }
+  .collection-page-inner { padding: 0 18px; }
+  .collection-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 36px 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .collection-title { font-size: 44px; }
+  .collection-subtitle { font-size: 15px; }
+  .collection-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .collection-count { padding-bottom: 0; }
+  .collection-filters {
+    flex-wrap: nowrap;
+    margin: 20px -18px 30px;
+    padding: 0 18px 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .collection-filters::-webkit-scrollbar { display: none; }
+  .collection-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 32px 14px;
+  }
+  .collection-card-image { padding: 4px; }
+  .collection-card-title { font-size: 16px; }
+}
+
+
+/* ---- 23. 首页横图文字：Artvee 风格左侧排版 ---- */
+.hero-image-overlay {
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: clamp(76px, 10vw, 118px) clamp(24px, 6vw, 84px) 56px;
+  text-align: left;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, .58) 0%,
+    rgba(0, 0, 0, .32) 46%,
+    rgba(0, 0, 0, .08) 100%
+  );
+}
+
+.hero-image-copy {
+  width: min(760px, 100%);
+}
+
+.hero-image-eyebrow {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(30px, 4vw, 50px);
+  font-weight: 900;
+  line-height: 1.06;
+  letter-spacing: -.035em;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, .34);
+}
+
+.hero-image-title {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(34px, 4.8vw, 58px);
+  font-weight: 900;
+  line-height: 1.08;
+  letter-spacing: -.045em;
+  text-align: left;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, .34);
+}
+
+.hero-image-subtitle {
+  max-width: 720px;
+  margin-top: 10px;
+  color: rgba(255, 255, 255, .96);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.7;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, .32);
+}
+
+.hero-image-cta {
+  align-self: flex-start;
+  margin-top: 18px;
+}
+
+@media (max-width: 768px) {
+  .hero-image-overlay {
+    padding: 66px 22px 38px;
+    background: linear-gradient(
+      90deg,
+      rgba(0, 0, 0, .62) 0%,
+      rgba(0, 0, 0, .34) 72%,
+      rgba(0, 0, 0, .1) 100%
+    );
+  }
+
+  .hero-image-eyebrow {
+    font-size: 30px;
+  }
+
+  .hero-image-title {
+    font-size: 36px;
+  }
+
+  .hero-image-subtitle {
+    font-size: 14px;
+  }
+}
+
+
+/* ---- 24. 全站主题统一：暖色博物馆风格 ---- */
+html { color-scheme: light; }
+body { background: var(--color-bg); }
+.nav { background: rgba(246, 243, 236, .88); }
+#app { background: var(--color-bg); }
+.collection-page { background: var(--color-bg); }
+.collection-card-image { background: var(--color-surface); }
+.footer { background: var(--color-bg-alt); }
+::selection { background: rgba(154, 85, 56, .2); color: var(--color-text); }
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+/* Logo 只显示图标，不显示文字（所有页面，Artvee 风格） */
+.nav-logo .logo-text { display: none !important; }
