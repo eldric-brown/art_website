@@ -76,6 +76,6 @@ export async function onRequest({ request, env }) {
     }, 200, { 'Set-Cookie': cookie });
   } catch (error) {
     console.error('change password failed:', error);
-    return json({ ok: false, error: 'internal_error', message: '密码修改失败' }, 500);
+    return json({ ok: false, error: 'internal_error', message: '密码修改失败：' + (error && error.message ? error.message : String(error)) }, 500);
   }
 }
