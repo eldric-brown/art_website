@@ -2,8 +2,8 @@
 -- Art Website - 02_demo_data.sql  demo 数据导入脚本
 -- ============================================================
 -- 用途：在 01_schema.sql 建库后灌入演示数据：
---       7 件作品、7 个栏目、3 条线下活动、站点文案、艺术家档案、
---       admin 后台用户（PBKDF2 哈希，密码见 doc/PROJECT.md）。
+--       7 件作品、7 个栏目、3 条线下活动、研究方向 3 板块 / 7 条富文本内容、
+--       站点文案、艺术家档案、admin 后台用户（PBKDF2 哈希，密码见 doc/PROJECT.md）。
 --
 --   npx wrangler d1 execute art-website-db --local  --file=./doc/sql/02_demo_data.sql
 --   npx wrangler d1 execute art-website-db --remote --file=./doc/sql/02_demo_data.sql
@@ -132,3 +132,34 @@ INSERT INTO "site_content" ("key","value","updated_at") VALUES
 ('common.notFound.title','Page Not Found','2026-09-14 01:17:46'),
 ('common.notFound.subtitle','The page you are looking for does not exist.','2026-09-14 01:17:46'),
 ('common.backHome','Back to Home','2026-09-14 01:17:46');
+
+-- ---------- 7. 研究方向（research_sections / research_items） ----------
+-- 三个基础板块已由 01_schema.sql 建好；这里只灌条目。
+-- section_id 用子查询按 slug 取，避免依赖自增 id 的顺序。
+INSERT INTO "research_items" ("section_id","title","body","sort_order","enabled","created_at","updated_at") VALUES
+((SELECT id FROM research_sections WHERE slug='question'),'我想知道什么','<p class="text-lg">如果颜色暂时退场，<span class="text-accent">一条线的走向</span>还能不能讲完一个画面？</p><p>画布上最先出现的不是颜色，而是一组黑色的轨迹。它们记录的是我看画布的方式：从哪开始，在哪里停顿，在哪里推倒重来。</p><p class="text-muted">这些问题没有标准答案。它们只是决定了我接下来要画什么、要反复画几次。</p>',20,1,'2026-09-14 03:10:00','2026-09-14 03:10:00');
+INSERT INTO "research_items" ("section_id","title","body","sort_order","enabled","created_at","updated_at") VALUES
+((SELECT id FROM research_sections WHERE slug='question'),'黑色线条不是轮廓','<blockquote>黑色线条不是轮廓，它是一段被留下来的时间。</blockquote><p>把线条理解为「光的轨迹」之后，画面开始有了先后顺序：先亮的地方、后暗的地方，以及我故意没有画完的地方。</p><p class="font-serif text-muted">—— 工作室笔记，2026 春</p>',10,1,'2026-09-14 03:10:00','2026-09-14 03:10:00');
+INSERT INTO "research_items" ("section_id","title","body","sort_order","enabled","created_at","updated_at") VALUES
+((SELECT id FROM research_sections WHERE slug='method'),'从底色到最后一根线','<p>整个过程分五步，每一步都会停一两天再看一次。</p><figure><img class="img-full" src="https://picsum.photos/seed/research-method-under/1400/900" alt="底色阶段"><figcaption class="text-muted">01 底色与明度关系：只用两种颜色找大关系</figcaption></figure><div class="columns-2"><div class="column"><img class="img-half" src="https://picsum.photos/seed/research-detail-brush/760/760" alt="局部放大：笔触堆叠方向"><p class="text-small text-muted">局部放大：笔触的堆叠方向</p></div><div class="column"><img class="img-half" src="https://picsum.photos/seed/research-detail-edge/760/760" alt="局部放大：干画法留下的硬边缘"><p class="text-small text-muted">局部放大：干画法留下的硬边缘</p></div></div><figure><img class="img-full" src="https://picsum.photos/seed/research-process-studio/1400/900" alt="创作过程"><figcaption class="text-muted">02 过程照：最后一遍黑色轨迹之前的状态</figcaption></figure><p class="text-muted">工具：猪鬃扁平笔、2 号圆头笔、亚麻布底、调色油与无味松节油。</p>',20,1,'2026-09-14 03:10:00','2026-09-14 03:10:00');
+INSERT INTO "research_items" ("section_id","title","body","sort_order","enabled","created_at","updated_at") VALUES
+((SELECT id FROM research_sections WHERE slug='method'),'不是每一笔都会留下来','<p class="text-lg">不是每一笔都会留下来。</p><p>大约只有三分之一的第一遍笔触会进入最终画面。其余的被覆盖、被刮掉，或者被留在反面当记录。</p><div class="columns-2"><div class="column"><img src="https://picsum.photos/seed/research-process-1/800/600" alt="第一遍过程照"><p class="text-small text-muted">第一遍：建立动势</p></div><div class="column"><img src="https://picsum.photos/seed/research-process-2/800/600" alt="第二遍过程照"><p class="text-small text-muted">第二遍：找形状</p></div></div>',10,1,'2026-09-14 03:10:00','2026-09-14 03:10:00');
+INSERT INTO "research_items" ("section_id","title","body","sort_order","enabled","created_at","updated_at") VALUES
+((SELECT id FROM research_sections WHERE slug='experiments'),'阶段一：黑色轨迹的累计','<p class="font-caps">Stage 01 · 2026.03 — 2026.06</p><p>把黑色当作光的路径来记录，每一遍只加一次笔，不换方向。</p><div class="columns-3"><div class="column"><img src="https://picsum.photos/seed/exp-trace-1/620/620" alt="第 1 遍"><p class="text-small text-muted">第 1 遍 · 定走向</p></div><div class="column"><img src="https://picsum.photos/seed/exp-trace-2/620/620" alt="第 3 遍"><p class="text-small text-muted">第 3 遍 · 出现厚度</p></div><div class="column"><img src="https://picsum.photos/seed/exp-trace-3/620/620" alt="第 5 遍"><p class="text-small text-muted">第 5 遍 · 边缘发光</p></div></div><p>累计到第 3 遍以后，线的边缘会自己产生亮部——这不是加了颜色，而是黑色和底色在互相借光。</p>',30,1,'2026-09-14 03:10:00','2026-09-14 03:10:00');
+INSERT INTO "research_items" ("section_id","title","body","sort_order","enabled","created_at","updated_at") VALUES
+((SELECT id FROM research_sections WHERE slug='experiments'),'阶段二：轨迹密度与画面厚度','<p class="font-caps">Stage 02 · 2026.07 — 进行中</p><p>测试同一区域反复叠加 1 / 3 / 5 / 8 遍时的差异，记录厚度和反光的变化。</p><div class="columns-2"><div class="column"><img src="https://picsum.photos/seed/exp-density-1/720/540" alt="3 遍"><p class="text-small text-muted">3 遍 · 线开始断开</p></div><div class="column"><img src="https://picsum.photos/seed/exp-density-2/720/540" alt="8 遍"><p class="text-small text-muted">8 遍 · 出现块面</p></div></div><div class="box-note"><p>结论还没写。现在的判断是：叠加次数越多，画面越接近版画；越少，越接近速写。</p></div><p class="mt-lg text-muted">下一步：换更稀的调色油，看轨迹在 24 小时内的变化。</p>',20,1,'2026-09-14 03:10:00','2026-09-14 03:10:00');
+INSERT INTO "research_items" ("section_id","title","body","sort_order","enabled","created_at","updated_at") VALUES
+((SELECT id FROM research_sections WHERE slug='experiments'),'阶段三：待开始','<p class="text-muted">留给下一组画。目前还没有可公开的过程记录。</p>',10,1,'2026-09-14 03:10:00','2026-09-14 03:10:00');
+
+-- ---------- 8. 研究方向相关站点文案 ----------
+INSERT INTO "site_content" ("key","value","updated_at") VALUES
+('nav.research','Research','2026-09-14 01:17:46'),
+('home.nav.research.image','https://mdl.artvee.com/assets/bgs/monochrome.jpg','2026-09-14 02:26:27'),
+('footer.links.research','Research','2026-09-14 01:17:46'),
+('research.eyebrow','Ongoing inquiry','2026-09-14 03:10:00'),
+('research.title','Research','2026-09-14 03:10:00'),
+('research.subtitle','Questions, methods and experiments behind the paintings — written as they happen.','2026-09-14 03:10:00'),
+('research.unavailable','Research content could not be loaded.','2026-09-14 03:10:00'),
+('research.empty.title','Nothing published yet','2026-09-14 03:10:00'),
+('research.empty.subtitle','Research notes are being written and will appear here soon.','2026-09-14 03:10:00'),
+('research.section.noItems','This section is empty for now.','2026-09-14 03:10:00');

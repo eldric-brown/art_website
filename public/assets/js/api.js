@@ -67,6 +67,10 @@ window.API = (function () {
 
     getSiteContent: function () {
       return request('/api/site-content');
+    },
+
+    getResearch: function () {
+      return request('/api/research');
     }
   };
 })();

@@ -46,6 +46,44 @@ window.Utils = (function () {
         .replace(/'/g, '&#39;');
     },
 
+    // 富文本二次兜底净化（写入时服务端已白名单过滤，这里再挡一层）
+    // 只移除危险结构与协议，不改变正常排版标签。
+    sanitizeRichHtml(value) {
+      let html = value == null ? '' : String(value);
+      if (!html) return '';
+
+      // 1) 整块移除脚本与样式（含其内容）
+      html = html.replace(/<\s*script\b[^>]*>[\s\S]*?<\s*\/\s*script\s*>/gi, '')
+                 .replace(/<\s*style\b[^>]*>[\s\S]*?<\s*\/\s*style\s*>/gi, '');
+
+      // 2) 移除危险标签（成对或自闭合都清掉）
+      const dangerous = [
+        'script', 'style', 'iframe', 'object', 'embed', 'form', 'input',
+        'button', 'textarea', 'select', 'option', 'link', 'meta', 'base',
+        'frame', 'frameset', 'noscript', 'template', 'svg', 'math', 'video',
+        'audio', 'source', 'track', 'applet', 'marquee', 'portal'
+      ];
+      for (let i = 0; i < dangerous.length; i += 1) {
+        const pattern = new RegExp('<\\s*/?\\s*' + dangerous[i] + '\\b[^>]*>', 'gi');
+        html = html.replace(pattern, '');
+      }
+
+      // 3) 移除事件属性与可执行属性
+      html = html.replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+      html = html.replace(
+        /\s(?:srcdoc|formaction|xlink:href|hreflang|integrity|crossorigin|fetchdata|onfocus|onload)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi,
+        ''
+      );
+
+      // 4) 拦截危险协议
+      html = html.replace(
+        /(href|src|action)\s*=\s*(["'])\s*(?:javascript|vbscript|data:text\/html|data:application\/html)\s*:[^"']*\2/gi,
+        ''
+      );
+
+      return html;
+    },
+
     placeholderImage(text) {
       text = text || 'Loading...';
       const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000">' +

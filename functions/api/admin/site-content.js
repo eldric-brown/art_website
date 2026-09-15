@@ -1,6 +1,7 @@
 import { json, methodNotAllowed } from '../../_lib/http.js';
 
-// key 命名约束：形如 'page.block.item'，允许字母/数字/点/下划线/连字符
+// key 命名约束：形如 'page.block.item'，各段允许小写字母/数字/下划线。
+// 注意不含连字符：数据库里现有的 key 都没有连字符，放开会让 key 风格失控。
 const KEY_RE = /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/;
 const MAX_VALUE_LENGTH = 2048;
 const MAX_KEYS_PER_REQUEST = 300;

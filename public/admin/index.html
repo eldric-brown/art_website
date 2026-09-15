@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>管理后台 · 艺术家</title>
   <link rel="stylesheet" href="/assets/styles/admin.css">
+  <!-- rich.css 提供 .rte-*（编辑器外壳/工具栏/图片弹窗）与 .research-body（正文排版）。
+       后台富文本编辑器依赖它才能正常显示，同时保证「后台所见 = 前台所得」。 -->
+  <link rel="stylesheet" href="/assets/styles/rich.css">
 </head>
 <body>
   <div class="admin-layout">
@@ -12,12 +15,13 @@
     <aside class="admin-sidebar">
       <div class="admin-sidebar-brand">
         <div class="brand-mark">A</div>
-        <span>艺术家后台</span>
+        <span>艺术家管理后台</span>
       </div>
       <a href="#" class="admin-nav-link active" data-tab="works">🎨 作品管理</a>
       <a href="#" class="admin-nav-link" data-tab="home">🏠 首页展示</a>
       <a href="#" class="admin-nav-link" data-tab="categories">🗂 栏目管理</a>
       <a href="#" class="admin-nav-link" data-tab="meetup">📍 线下交流</a>
+      <a href="#" class="admin-nav-link" data-tab="research">🔬 研究方向</a>
       <a href="#" class="admin-nav-link" data-tab="about">👤 艺术家资料</a>
       <a href="#" class="admin-nav-link" data-tab="content">📝 站点文案</a>
       <a href="#" class="admin-nav-link" data-tab="account">🔐 账号安全</a>
@@ -97,6 +101,11 @@
                 <div class="home-nav-image-preview" id="home-nav-works-preview"><span>留空：自动取图</span></div>
               </div>
               <div class="home-nav-image-item">
+                <label for="home-nav-research-image">Research · 研究方向</label>
+                <input id="home-nav-research-image" type="text" data-home-nav-image data-home-nav-preview="home-nav-research-preview" placeholder="https://...">
+                <div class="home-nav-image-preview" id="home-nav-research-preview"><span>留空：自动取图</span></div>
+              </div>
+              <div class="home-nav-image-item">
                 <label for="home-nav-about-image">About · 关于</label>
                 <input id="home-nav-about-image" type="text" data-home-nav-image data-home-nav-preview="home-nav-about-preview" placeholder="https://...">
                 <div class="home-nav-image-preview" id="home-nav-about-preview"><span>留空：自动取图</span></div>
@@ -165,6 +174,29 @@
         </p>
         <div id="meetup-list-container">
           <div class="admin-empty"><h3>加载中……</h3></div>
+        </div>
+      </section>
+
+      <!-- 研究方向 tab -->
+      <section id="tab-research" hidden>
+        <div class="admin-header">
+          <h1>研究方向</h1>
+          <div class="admin-header-actions">
+            <button class="btn btn-primary" id="btn-new-research-section">＋ 新建板块</button>
+            <button class="btn" id="btn-refresh-research">刷新</button>
+          </div>
+        </div>
+
+        <div class="upload-form">
+          <p class="research-admin-hint">
+            每个板块对应前台「研究方向」页的一整段，按「排序」从大到小排列。板块里可以放任意多条富文本条目：<br>
+            选中文字后用工具栏改字号 / 颜色 / 字体；用「图片」按钮粘贴图片直链，插入后点选图片再选尺寸；<br>
+            用「布局块」插入两列、三列、强调块、备注块等排版结构。<br>
+            图片目前只能填 <code>https://</code> 直链；R2 上传上线后这里会换成文件选择器。
+          </p>
+          <div id="research-section-list">
+            <div class="admin-empty"><h3>加载中……</h3></div>
+          </div>
         </div>
       </section>
 
@@ -375,6 +407,7 @@
   <!-- Toast 容器 -->
   <div id="toast-container"></div>
 
+  <script src="/assets/js/editor.js"></script>
   <script src="/assets/js/admin.js"></script>
 </body>
 </html>

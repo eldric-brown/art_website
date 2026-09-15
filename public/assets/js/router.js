@@ -16,6 +16,7 @@ window.Router = (function () {
       return V.works(category);
     } },
     { pattern: /^#\/works\/(.+)$/, handler: function (m) { return V.artworkDetail(m[1]); } },
+    { pattern: /^#\/research$/,    handler: function () { return V.research(); } },
     { pattern: /^#\/about$/,       handler: function () { return V.about(); } },
     { pattern: /^#\/contact$/,     handler: function () { return V.contact(); } },
     { pattern: /^#\/meetup$/,      handler: function () { return V.meetup(); } }
@@ -84,6 +85,12 @@ window.Router = (function () {
       }
 
       // 详情页缩略图切换
+      // 详情页图集：主图 + 缩略图统一收集，供灯箱左右翻页
+      const detailImages = Array.from(document.querySelectorAll('.artwork-detail-thumbnails img'))
+        .map(function (thumb) {
+          return { src: thumb.dataset.full || thumb.src, alt: thumb.alt || '' };
+        });
+
       document.querySelectorAll('.artwork-detail-thumbnails img').forEach(function (thumb) {
         thumb.onclick = function () {
           const mainImg = document.querySelector('#detail-main-image img');
@@ -102,9 +109,15 @@ window.Router = (function () {
       const mainImg = document.querySelector('#detail-main-image img');
       if (mainImg) {
         mainImg.onclick = function () {
+          const src = mainImg.dataset.orig || mainImg.src;
+          let index = 0;
+          if (detailImages.length) {
+            const found = detailImages.findIndex(function (item) { return item.src === src; });
+            index = found >= 0 ? found : 0;
+          }
           window.Lightbox.open({
-            src: mainImg.dataset.orig || mainImg.src,
-            alt: mainImg.alt
+            items: detailImages.length ? detailImages : [{ src: src, alt: mainImg.alt }],
+            index: index
           });
         };
       }
@@ -135,6 +148,31 @@ window.Router = (function () {
         window.requestAnimationFrame(update);
       });
 
+      // 研究方向页：顶部目录平滑跳转（用 button 而不是 <a href="#...">，避免触发 hash 路由）
+      document.querySelectorAll('[data-research-target]').forEach(function (button) {
+        button.onclick = function (event) {
+          event.preventDefault();
+          const target = document.getElementById(button.getAttribute('data-research-target'));
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+      });
+
+      // 研究方向页：富文本里的图片点击放大
+      // 研究方向页：富文本里的图片点击放大（同一段正文内的图片可以左右翻页）
+      document.querySelectorAll('[data-research-body]').forEach(function (body) {
+        const images = Array.from(body.querySelectorAll('img')).map(function (img) {
+          return { src: img.src, alt: img.getAttribute('alt') || '' };
+        });
+        if (!images.length) return;
+
+        Array.from(body.querySelectorAll('img')).forEach(function (img, index) {
+          img.style.cursor = 'zoom-in';
+          img.onclick = function () {
+            window.Lightbox.open({ items: images, index: index });
+          };
+        });
+      });
+
       // 灯箱关闭
       window.Lightbox._bindClose();
     }
@@ -148,42 +186,100 @@ window.Router = (function () {
 window.Lightbox = (function () {
   'use strict';
 
+  // 当前图集与下标。单图时 items 只有一个元素，左右箭头会自动隐藏。
+  const view = { items: [], index: 0 };
+
+  function box() {
+    return document.getElementById('lightbox');
+  }
+
+  function render() {
+    const container = box();
+    const item = view.items[view.index];
+    if (!container || !item) return;
+
+    const img = container.querySelector('.lightbox-img');
+    const caption = container.querySelector('.lightbox-caption');
+    img.src = item.src;
+    img.alt = item.alt || '';
+    caption.textContent = item.alt || '';
+
+    const multiple = view.items.length > 1;
+    const prev = container.querySelector('.lightbox-prev');
+    const next = container.querySelector('.lightbox-next');
+    if (prev) prev.hidden = !multiple;
+    if (next) next.hidden = !multiple;
+  }
+
   return {
+    // opts: { src, alt } 单图；或 { items: [{src, alt}], index } 图集
     open: function (opts) {
-      this.elements = {
-        container: document.getElementById('lightbox'),
-        img: document.querySelector('.lightbox-img'),
-        caption: document.querySelector('.lightbox-caption')
-      };
-      this.elements.img.src = opts.src;
-      this.elements.img.alt = opts.alt || '';
-      this.elements.caption.textContent = opts.alt || '';
-      this.elements.container.hidden = false;
+      opts = opts || {};
+      const list = Array.isArray(opts.items) && opts.items.length
+        ? opts.items
+        : (opts.src ? [{ src: opts.src, alt: opts.alt || '' }] : []);
+      if (!list.length) return;
+
+      view.items = list;
+      const start = Number(opts.index);
+      view.index = Number.isInteger(start) && start >= 0 && start < list.length ? start : 0;
+
+      const container = box();
+      if (!container) return;
+      container.hidden = false;
       document.body.style.overflow = 'hidden';
+
+      render();
       this._bindClose();
+      this._bindNav();
       this._bindKeys();
     },
 
     close: function () {
-      const box = document.getElementById('lightbox');
-      if (box) box.hidden = true;
+      const container = box();
+      if (container) container.hidden = true;
       document.body.style.overflow = '';
       document.onkeydown = null;
+      view.items = [];
+      view.index = 0;
+    },
+
+    next: function () {
+      if (view.items.length < 2) return;
+      view.index = (view.index + 1) % view.items.length;
+      render();
+    },
+
+    prev: function () {
+      if (view.items.length < 2) return;
+      view.index = (view.index - 1 + view.items.length) % view.items.length;
+      render();
     },
 
     _bindClose: function () {
-      const box = document.getElementById('lightbox');
-      if (!box) return;
-      const closeBtn = box.querySelector('.lightbox-close');
-      closeBtn.onclick = () => window.Lightbox.close();
-      box.onclick = function (e) {
-        if (e.target === box) window.Lightbox.close();
+      const container = box();
+      if (!container) return;
+      const closeBtn = container.querySelector('.lightbox-close');
+      if (closeBtn) closeBtn.onclick = function () { window.Lightbox.close(); };
+      container.onclick = function (event) {
+        if (event.target === container) window.Lightbox.close();
       };
     },
 
+    _bindNav: function () {
+      const container = box();
+      if (!container) return;
+      const prev = container.querySelector('.lightbox-prev');
+      const next = container.querySelector('.lightbox-next');
+      if (prev) prev.onclick = function (event) { event.stopPropagation(); window.Lightbox.prev(); };
+      if (next) next.onclick = function (event) { event.stopPropagation(); window.Lightbox.next(); };
+    },
+
     _bindKeys: function () {
-      document.onkeydown = function (e) {
-        if (e.key === 'Escape') window.Lightbox.close();
+      document.onkeydown = function (event) {
+        if (event.key === 'Escape') window.Lightbox.close();
+        else if (event.key === 'ArrowRight') window.Lightbox.next();
+        else if (event.key === 'ArrowLeft') window.Lightbox.prev();
       };
     }
   };

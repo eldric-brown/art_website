@@ -1,0 +1,403 @@
+/* ============================================================
+   rich.css - 富文本内容渲染 + 富文本编辑器外壳
+   ============================================================
+   前台 index.html 与后台 admin/index.html 同时引入：
+     · .research-body  —— 前台 Research 页面渲染后台写入的 HTML
+     · .rte-*          —— 后台编辑器的工具栏 / 编辑区 / 图片弹窗
+   编辑区也挂了 .research-body，所以后台所见即前台所得。
+
+   ⚠️ 下面的排版/布局 class 是白名单，必须与这两处同步：
+       functions/_lib/html.js  ALLOWED_CLASSES
+       public/assets/js/editor.js  CLASSES
+   ============================================================ */
+
+/* ---- 1. 富文本内容基础排版 ---- */
+.research-body {
+  font-size: 16px;
+  line-height: 1.78;
+  color: var(--color-text);
+  word-break: break-word;
+}
+.research-body > :first-child { margin-top: 0; }
+.research-body > :last-child { margin-bottom: 0; }
+
+.research-body p { margin: 0 0 14px; }
+.research-body h2 {
+  font-size: clamp(22px, 3vw, 28px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.28;
+  margin: 30px 0 12px;
+}
+.research-body h3 {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 26px 0 10px;
+}
+.research-body h4 {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  margin: 22px 0 8px;
+}
+.research-body blockquote {
+  margin: 18px 0;
+  padding: 14px 22px;
+  border-left: 3px solid var(--color-accent);
+  background: var(--color-bg-alt);
+  color: var(--color-text-secondary);
+  font-family: var(--font-serif);
+  font-size: 19px;
+  line-height: 1.7;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.research-body blockquote p { margin-bottom: 0; }
+.research-body ul,
+.research-body ol { margin: 0 0 14px; padding-left: 24px; }
+.research-body ul { list-style: disc; }
+.research-body ol { list-style: decimal; }
+.research-body li { margin-bottom: 6px; }
+.research-body a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.research-body a:hover { color: var(--color-accent-hover); }
+.research-body hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 28px 0;
+}
+.research-body img {
+  max-width: 100%;
+  height: auto;
+  margin: 18px 0;
+  border-radius: var(--radius-md);
+}
+.research-body figure { margin: 18px 0; }
+.research-body figure > img { margin: 0; }
+.research-body figcaption {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text-tertiary);
+}
+.research-body pre {
+  background: var(--color-bg-alt);
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0 0 14px;
+}
+.research-body code {
+  background: var(--color-bg-alt);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: .92em;
+}
+.research-body pre code { background: none; padding: 0; }
+.research-body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 18px 0;
+  font-size: 14px;
+}
+.research-body th,
+.research-body td {
+  border: 1px solid var(--color-border);
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+.research-body th {
+  background: var(--color-bg-alt);
+  font-weight: 600;
+}
+.research-body div { margin-bottom: 14px; }
+.research-body > div:last-child { margin-bottom: 0; }
+
+/* ---- 2. 文字样式 / 对齐 / 字体 ---- */
+.research-body .text-center { display: block; text-align: center; }
+.research-body .text-right { display: block; text-align: right; }
+
+.research-body .text-small { font-size: 13px; line-height: 1.7; }
+.research-body .text-lg { font-size: 22px; line-height: 1.6; }
+.research-body .text-xl {
+  font-size: clamp(24px, 3.4vw, 32px);
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.research-body .text-muted { color: var(--color-text-tertiary); }
+.research-body .text-accent { color: var(--color-accent); }
+
+.research-body .font-serif { font-family: var(--font-serif); }
+.research-body .font-caps {
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ---- 3. 图片尺寸 ---- */
+.research-body img.img-full { width: 100%; }
+.research-body img.img-half { width: 50%; }
+.research-body img.img-center {
+  display: block;
+  width: 62%;
+  margin-left: auto;
+  margin-right: auto;
+}
+.research-body img.img-square {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+.research-body img.img-plain { border-radius: 0; }
+
+/* ---- 4. 结构布局块 ---- */
+.research-body .columns-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+.research-body .columns-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 20px 0;
+}
+.research-body .columns-2 > .column,
+.research-body .columns-3 > .column { min-width: 0; }
+.research-body .columns-2 p,
+.research-body .columns-3 p { margin-bottom: 6px; }
+.research-body .columns-2 img,
+.research-body .columns-3 img { margin: 0 0 8px; width: 100%; }
+
+.research-body .box-accent {
+  padding: 20px 24px;
+  background: var(--color-accent);
+  color: #fffdf8;
+  border-radius: var(--radius-md);
+  margin: 20px 0;
+}
+.research-body .box-accent p,
+.research-body .box-accent .text-muted { color: #fffdf8; }
+.research-body .box-accent p:last-child { margin-bottom: 0; }
+
+.research-body .box-note {
+  padding: 16px 20px;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin: 20px 0;
+  color: var(--color-text-secondary);
+}
+.research-body .box-note p:last-child { margin-bottom: 0; }
+
+.research-body .box-quote {
+  padding: 8px 0 8px 22px;
+  border-left: 3px solid var(--color-accent);
+  margin: 20px 0;
+  font-family: var(--font-serif);
+  font-size: 19px;
+  line-height: 1.7;
+}
+.research-body .box-quote p:last-child { margin-bottom: 0; }
+
+.research-body .mt-lg { margin-top: 32px; }
+.research-body .mb-lg { margin-bottom: 32px; }
+.research-body .no-margin { margin: 0; }
+
+/* ---- 5. 富文本编辑器外壳（仅后台使用） ---- */
+.rte-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: var(--color-bg-alt);
+}
+.rte-toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding-right: 7px;
+  border-right: 1px solid var(--color-border);
+}
+.rte-toolbar-group:last-child { border-right: none; padding-right: 0; }
+.rte-toolbar-label {
+  padding: 0 7px 0 5px;
+  font-size: 11px;
+  line-height: 30px;
+  color: var(--color-text-tertiary);
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+.rte-icon-txt { font-size: 12px; }
+.rte-btn {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 9px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .15s var(--ease, ease), color .15s var(--ease, ease);
+}
+.rte-btn:hover { background: #fff; color: var(--color-text); box-shadow: var(--shadow-sm, 0 1px 4px rgba(0,0,0,.08)); }
+.rte-btn:active { transform: translateY(1px); }
+.rte-btn.is-active { background: var(--color-text); color: var(--color-bg); }
+.rte-btn strong { font-weight: 700; }
+.rte-btn em { font-style: italic; }
+.rte-btn span.u { text-decoration: underline; }
+.rte-btn span.s { text-decoration: line-through; }
+
+.rte-editor {
+  border: 1px solid var(--color-border);
+  border-radius: 0 0 8px 8px;
+  background: #fff;
+  padding: 18px 20px;
+  min-height: 240px;
+  max-height: 620px;
+  overflow-y: auto;
+  outline: none;
+}
+.rte-editor:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(154, 85, 56, .12);
+}
+/* 点选中的图片：高亮提示「图片尺寸」按钮可以作用在它上面 */
+.rte-editor img { cursor: pointer; }
+.rte-editor img.rte-img-selected {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.rte-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+}
+.rte-editor.is-empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+}
+
+/* ---- 6. 编辑器弹窗（图片 URL / 链接） ---- */
+.rte-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(15, 13, 10, .5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.rte-dialog {
+  width: 100%;
+  max-width: 480px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg, 0 20px 60px rgba(0,0,0,.28));
+  padding: 20px;
+}
+.rte-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.rte-dialog-header h4 { font-size: 16px; font-weight: 600; }
+.rte-dialog-close {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.rte-dialog-close:hover { background: var(--color-bg-alt); color: var(--color-text); }
+.rte-dialog-help {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--color-text-secondary);
+}
+.rte-dialog-help code {
+  background: var(--color-bg-alt);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.rte-dialog-input {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--color-text);
+}
+.rte-dialog-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(154, 85, 56, .12);
+}
+.rte-dialog-error {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--color-danger, #c0392b);
+}
+.rte-dialog-preview {
+  margin-top: 12px;
+  padding: 8px;
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-alt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+}
+.rte-dialog-preview img { max-width: 100%; max-height: 180px; border-radius: 6px; }
+.rte-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+/* ---- 7. 响应式 ---- */
+@media (max-width: 720px) {
+  .research-body .columns-2,
+  .research-body .columns-3 { grid-template-columns: 1fr; }
+  .research-body .text-xl { font-size: 24px; }
+  .rte-editor { padding: 14px 14px; min-height: 180px; }
+  .rte-toolbar { padding: 6px; }
+}

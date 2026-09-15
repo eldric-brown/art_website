@@ -74,7 +74,7 @@ main.js   应用初始化入口（DOMContentLoaded 后执行）
 #### `api.js` —— 前台 API 封装
 
 - `request(url, options)`：统一 `fetch`（`credentials: 'same-origin'`），JSON 头自动设置，`!res.ok || !data.ok` 抛错（带 `status` 与 `data`）。
-- 方法：`listArtworks(params)`、`getArtwork(id)`、`getArtist()`、`listCategories()`、`listMeetups()`、`getSiteContent()`。
+- 方法：`listArtworks(params)`、`getArtwork(id)`、`getArtist()`、`listCategories()`、`listMeetups()`、`getResearch()`、`getSiteContent()`。
 
 #### `views.js` —— 视图渲染（所有文案经 `T(key)` 读取）
 
@@ -86,17 +86,18 @@ main.js   应用初始化入口（DOMContentLoaded 后执行）
 | `about()` | 头像、中英文名、一句话简介、长简介、社交链接；无资料显示 `about.unavailable` |
 | `contact()` | 从 artist 取邮箱/微信；都没有时显示「暂未提供」 |
 | `meetup()` | 活动列表（图片 + 标题 + 日期 + 地点）；空列表显示 `meetup.empty` |
+| `research()` | 研究方向长文页：`GET /api/research` 取板块+条目，按 sort_order 倒序渲染 Question / Method / Experiments 三段；条目正文为服务端已净化的富文本 HTML，客户端再走一遍 `sanitizeRichHtml` 兜底；无板块显示 `research.empty.*`，板块无条目显示 `research.section.noItems` |
 | `loading` / `empty` / `notFound` | 通用状态视图 |
 
 **首页三段式**：
 
 1. **第一屏横图**（`heroSectionHtml`）：优先 `home.hero.image`，为空回退精选作品首图；两者皆无回退经典文字 hero。有文案时叠加 eyebrow/标题/副标题/CTA。
-2. **第二屏导航图条**（`navigationTilesSectionHtml`）：Home/Works/About/Meet Up/Contact 五张横图卡，背景图取 `home.nav.<key>.image`，留空显示占位色块。
+2. **第二屏导航图条**（`navigationTilesSectionHtml`）：Home/Works/Research/About/Meet Up/Contact 六张横图卡，背景图取 `home.nav.<key>.image`，留空显示占位色块。
 3. **第三屏内容轮播**（`contentCardsSectionHtml`）：`home.cards.count` 控制数量，`home.card.N.{title,text,image,link}` 渲染卡片（缺 title 或 image 的卡跳过），箭头控制横向轮播。
 
 #### `router.js` —— 路由与交互
 
-- 路由表（hash 匹配）：`#/`、`#/works`、`#/works/category/:key`、`#/works/:id`、`#/about`、`#/contact`、`#/meetup`；无匹配渲染 404。
+- 路由表（hash 匹配）：`#/`、`#/works`、`#/works/category/:key`、`#/works/:id`、`#/research`、`#/about`、`#/contact`、`#/meetup`；无匹配渲染 404。
 - `navigate()`：切 loading → 匹配 handler → `_afterRender`（滚动渐显、导航高亮、事件绑定）。
 - 事件绑定：作品页即时搜索（只过滤已加载卡片）、详情页缩略图切换、主图点击开灯箱、首页轮播箭头翻页（边界禁用）。
 - `Lightbox`：图片放大浏览，支持 Esc / 遮罩点击关闭。
@@ -345,6 +346,20 @@ npx wrangler d1 execute art-website-db --remote --command="UPDATE users SET pass
 
 `id`、`title`、`date_text`(自由文本，如 "May 2026")、`location`、`image`、`sort_order`、`created_at`、`updated_at`。
 
+#### research_sections —— 研究方向板块
+
+`id`、`slug`(UNIQUE，板块标识 question/method/experiments)、`title`、`subtitle`、`sort_order`、`enabled`(0/1 软删)、`created_at`、`updated_at`。一个板块对应前台页面的一整段。三个基础板块由建表脚本 `INSERT OR IGNORE` 写入，`03_add_research.sql` 可给已有库增量补上。
+
+#### research_items —— 研究方向条目
+
+`id`、`section_id`(指向 research_sections.id，逻辑外键无级联)、`title`、`body`(富文本 HTML)、`sort_order`、`enabled`(1 前台显示 / 0 仅后台可见)、`created_at`、`updated_at`。
+
+**富文本写入管线**：后台编辑器只产出白名单 class → `POST/PATCH /api/admin/research/...` 在写入前经 `sanitizeRichHtml()` 过滤 → 前台渲染时 `views.js` 再跑一遍兜底。白名单（标签 / 属性 / class / 图片与链接地址正则）集中在 `functions/_lib/html.js`，与 `public/assets/js/editor.js` 的 `CLASSES`、`public/assets/styles/rich.css` 三处必须同步修改。图片目前仅支持直链 URL（`https://` 或 `/r2/artworks/...`），R2 文件上传未接。
+
+**实现要点**：`sanitizeRichHtml()` 不依赖 `DOMParser` —— Workers 运行时没有 DOM，依赖它会静默回退成纯文本、把排版全部剥掉。改为「正则分词 + 栈」的纯函数实现，服务端与前端行为一致；禁止标签（script/svg/iframe…）连子内容整块删除，未知标签拆壳保留文字，非法 `img src` 整张删除、非法 `a href` 拆壳保留文字，块级标签开启时隐式关闭已打开的 `<p>`。属性值先解码 HTML 实体再统一重编码，避免 `href` 里的 `&amp;` 变成 `&amp;amp;`。回归用例见 `tools/sanitize_test.js`（`cscript //nologo tools\sanitize_test.js`，纯 ASCII 源码，65 条用例，当前 65/65 通过；该文件是 `html.js` 的 ES5 移植，白名单常量必须两边同步）。
+
+**开发工具**：`tools/brace_check.ps1` 对全部 JS 做括号平衡检查（`powershell -NoProfile -ExecutionPolicy Bypass -File tools\brace_check.ps1 <文件...>`），`tools/brace_debug.ps1` 是栈式版、会输出未闭合括号的行号。这两个脚本踩过三个 PowerShell 语义陷阱（哈希表用 `[char]` 查不到 string 键、`'\\'` 是两个字符导致转义比较失效、`/` 前是 `)` 时是除号不是正则），修复说明写在文件头注释里，改动时勿回退。曾在 editor.js 里查出一处真实缺失的 `}`（会导致整个文件 SyntaxError、富文本编辑器失效），已修复。
+
 #### users —— 后台用户
 
 | 字段 | 说明 |
@@ -366,12 +381,16 @@ npx wrangler d1 execute art-website-db --remote --command="UPDATE users SET pass
 - `idx_view_logs_artwork ON view_logs(artwork_id, viewed_at)`
 - `idx_categories_order ON categories(enabled, sort_order DESC)`
 - `idx_meetup_items_order ON meetup_items(sort_order DESC)`
+- `idx_research_sections_order ON research_sections(enabled, sort_order DESC)`
+- `idx_research_items_section ON research_items(section_id, sort_order DESC)`
 
 **触发器**（修改核心字段时自动刷新 `updated_at`）：
 
 - `trg_artworks_update_time`（监听 title/description/images/category/year/medium/dimensions/published/featured/sort_order/sold/price）
 - `trg_categories_update_time`（key/name/image/sort_order/enabled）
 - `trg_meetup_items_update_time`（title/date_text/location/image/sort_order）
+- `trg_research_sections_update_time`（slug/title/subtitle/sort_order/enabled）
+- `trg_research_items_update_time`（section_id/title/body/sort_order/enabled）
 - `trg_users_update_time`（username/password_hash/password_salt/password_iterations/password_algo）
 
 ### 4.4 site_content 文案键清单
@@ -379,10 +398,10 @@ npx wrangler d1 execute art-website-db --remote --command="UPDATE users SET pass
 前台所有文案均存于此表，前台经 `T(key, fallback)` 读取：
 
 - **站点/品牌**：`site.title`、`site.description`、`site.og_description`、`site.logo`、`site.favicon`、`site.logo_icon_light`、`site.logo_icon_dark`
-- **导航/页脚**：`nav.home`、`nav.works`、`nav.about`、`nav.meetup`、`nav.contact`；`footer.brand`、`footer.links.works|about|contact|admin|meetup`、`footer.copyright`（含 `{year}` 占位）
+- **导航/页脚**：`nav.home`、`nav.works`、`nav.research`、`nav.about`、`nav.meetup`、`nav.contact`；`footer.brand`、`footer.links.works|research|about|contact|admin|meetup`、`footer.copyright`（含 `{year}` 占位）
 - **经典 hero（无图回退）**：`hero.eyebrow`、`hero.title`、`hero.subtitle`、`hero.cta.primary`、`hero.cta.secondary`
 - **首页第一屏**：`home.hero.image`、`home.hero.eyebrow`、`home.hero.title`、`home.hero.subtitle`、`home.hero.cta`
-- **首页第二屏导航图**：`home.nav.home|works|about|meetup|contact.image`
+- **首页第二屏导航图**：`home.nav.home|works|research|about|meetup|contact.image`
 - **首页第三屏内容卡**：`home.cards.title`、`home.cards.subtitle`、`home.cards.count`；`home.card.N.{title,text,image,link}`（N=1..8）
 - **作品列表页**：`works.title`、`works.subtitle`、`works.empty.title`、`works.empty.subtitle`
 - **分类兜底名**：`category.all`、`category.oil|watercolor|sketch|ink|digital|photograph|other`
@@ -390,6 +409,7 @@ npx wrangler d1 execute art-website-db --remote --command="UPDATE users SET pass
 - **关于页**：`about.unavailable`
 - **联系页**：`contact.title`、`contact.subtitle`、`contact.email.label`、`contact.wechat.label`、`contact.note`、`contact.empty`
 - **线下交流页**：`meetup.title`、`meetup.subtitle`、`meetup.intro`、`meetup.item.date`、`meetup.item.location`、`meetup.empty`
+- **研究方向页**：`research.eyebrow`、`research.title`、`research.subtitle`、`research.unavailable`、`research.empty.title`、`research.empty.subtitle`、`research.section.noItems`
 - **通用**：`common.loading`、`common.thumbnail`、`common.notFound.title|subtitle`、`common.backHome`
 
 > 后台「站点文案」Tab 可平铺编辑任意键；「首页展示」Tab 专门维护 `home.*` 系列。

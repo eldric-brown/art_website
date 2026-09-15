@@ -10,6 +10,8 @@
 -- 配套：02_demo_data.sql（demo 数据导入脚本，建库后执行）
 -- ============================================================
 
+DROP TABLE IF EXISTS research_items;
+DROP TABLE IF EXISTS research_sections;
 DROP TABLE IF EXISTS view_logs;
 DROP TABLE IF EXISTS artworks;
 DROP TABLE IF EXISTS artist;
@@ -93,6 +95,30 @@ CREATE TABLE meetup_items (
     updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
+-- 研究方向：板块（Question / Method / Experiments 等，可在后台增删改）
+CREATE TABLE research_sections (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug       TEXT    NOT NULL UNIQUE,           -- 板块标识：question / method / experiments
+    title      TEXT    NOT NULL DEFAULT '',
+    subtitle   TEXT    NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0,        -- 越大越靠前
+    enabled    INTEGER NOT NULL DEFAULT 1,        -- 1 = 启用 / 0 = 停用（软删）
+    created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
+-- 研究方向：板块内的富文本条目（body 为白名单净化后的 HTML）
+CREATE TABLE research_items (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    section_id INTEGER NOT NULL,                  -- research_sections.id（逻辑外键，无级联）
+    title      TEXT    NOT NULL DEFAULT '',
+    body       TEXT    NOT NULL DEFAULT '',       -- 富文本 HTML：文字样式 + 图片 URL + 布局块
+    sort_order INTEGER NOT NULL DEFAULT 0,        -- 越大越靠前
+    enabled    INTEGER NOT NULL DEFAULT 1,        -- 1 = 前台显示 / 0 = 仅后台可见
+    created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
 -- 后台用户表（密码只存 PBKDF2-SHA256 哈希）
 CREATE TABLE users (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -112,6 +138,8 @@ CREATE INDEX idx_artworks_featured  ON artworks(featured, sort_order DESC);
 CREATE INDEX idx_view_logs_artwork ON view_logs(artwork_id, viewed_at);
 CREATE INDEX idx_categories_order ON categories(enabled, sort_order DESC);
 CREATE INDEX idx_meetup_items_order ON meetup_items(sort_order DESC);
+CREATE INDEX idx_research_sections_order ON research_sections(enabled, sort_order DESC);
+CREATE INDEX idx_research_items_section ON research_items(section_id, sort_order DESC);
 
 -- 触发器：修改核心字段时自动刷新 updated_at
 CREATE TRIGGER trg_artworks_update_time
@@ -142,6 +170,26 @@ FOR EACH ROW
 BEGIN
     UPDATE users SET updated_at = datetime('now') WHERE id = OLD.id;
 END;
+
+CREATE TRIGGER trg_research_sections_update_time
+AFTER UPDATE OF slug, title, subtitle, sort_order, enabled ON research_sections
+FOR EACH ROW
+BEGIN
+    UPDATE research_sections SET updated_at = datetime('now') WHERE id = OLD.id;
+END;
+
+CREATE TRIGGER trg_research_items_update_time
+AFTER UPDATE OF section_id, title, body, sort_order, enabled ON research_items
+FOR EACH ROW
+BEGIN
+    UPDATE research_items SET updated_at = datetime('now') WHERE id = OLD.id;
+END;
+
+-- 基线值：研究方向三个基础板块（INSERT OR IGNORE：slug 唯一，可重复执行）
+INSERT OR IGNORE INTO research_sections (slug, title, subtitle, sort_order, enabled) VALUES
+  ('question',    'Question',    'What I am trying to understand.',    30, 1),
+  ('method',      'Method',      'How the paintings are made.',        20, 1),
+  ('experiments', 'Experiments', 'Works in progress, stage by stage.', 10, 1);
 
 -- 基线值：站点 Logo / favicon（默认 Artvee 资源，后台可替换）
 INSERT OR REPLACE INTO site_content (key, value) VALUES

@@ -77,7 +77,8 @@
     contentOriginal: {},
     categories: [],
     meetups: [],
-    homeCards: []
+    homeCards: [],
+    research: []
   };
 
   // ---------- 作品列表 ----------
@@ -240,7 +241,9 @@
   // 在此粘贴 HTTPS 直链即可。后端仍接受站内 /r2/artworks/ 地址，便于日后恢复 R2。
   const URL_INPUT_ID = 'image-url-input';
   const MAX_IMAGES = 20;
-  const VALID_IMAGE_URL = /^(https:\/\/\S+|\/r2\/artworks\/\S+)$/i;
+  // 与服务端 functions/_lib/http.js 的 isAllowedImageUrl 保持一致：
+  // 线上只放行 https，本地开发额外放行 http://localhost|127.0.0.1。
+  const VALID_IMAGE_URL = /^(https:\/\/\S+|\/r2\/artworks\/\S+|http:\/\/(?:localhost|127\.0\.0\.1):\d+\/\S*)$/i;
 
   function setupImageUrls() {
     document.getElementById('btn-add-urls').onclick = addImageUrls;
@@ -273,7 +276,7 @@
     input.value = '';
     if (added.length) renderPreviewList();
     if (invalid.length) {
-      toast('无效地址（需以 https:// 开头）：' + invalid.join('、'), 'error');
+      toast('无效地址（需以 https:// 或 /r2/artworks/ 开头）：' + invalid.join('、'), 'error');
     } else if (added.length) {
       toast('已添加 ' + added.length + ' 张图片', 'success');
     }
@@ -430,6 +433,7 @@
       fields: [
         contentField('nav.home', '导航：首页', '显示在顶部导航，以及首页第二屏的导航图片条中。'),
         contentField('nav.works', '导航：作品', '显示在顶部导航、首页导航条和作品页入口中。'),
+        contentField('nav.research', '导航：研究方向', '显示在顶部导航和首页导航图片条中。'),
         contentField('nav.about', '导航：关于', '显示在顶部导航和首页导航图片条中。'),
         contentField('nav.meetup', '导航：线下交流', '显示在顶部导航、首页导航条和页脚入口中。'),
         contentField('nav.contact', '导航：联系我们', '显示在顶部导航、首页导航条和页脚入口中。'),
@@ -542,11 +546,27 @@
       ]
     },
     {
+      title: '研究方向页面',
+      description: '只控制 Research 页顶部的标题、说明文字和空状态文案。三个板块以及里面的富文本内容，请在左侧「研究方向」菜单编辑。',
+      page: '/#/research',
+      pageLabel: '查看研究方向页',
+      fields: [
+        contentField('research.eyebrow', '标题上方小字', '显示在大标题上方，例如 Ongoing inquiry。', { wide: true }),
+        contentField('research.title', '页面大标题', '例如 Research。'),
+        contentField('research.subtitle', '页面说明', '显示在大标题下方。', { wide: true }),
+        contentField('research.unavailable', '加载失败提示', '接口请求失败时显示。'),
+        contentField('research.empty.title', '没有内容时的标题', '所有板块都被清空时显示。'),
+        contentField('research.empty.subtitle', '没有内容时的说明', '', { wide: true }),
+        contentField('research.section.noItems', '板块为空的提示', '某个板块下没有任何条目时显示。', { wide: true })
+      ]
+    },
+    {
       title: '全站页脚',
       description: '控制所有页面底部 Footer 的品牌文字、链接名称和版权文字。{year} 会自动替换为当前年份。',
       fields: [
         contentField('footer.brand', '页脚品牌文字'),
         contentField('footer.links.works', '页脚链接：全部作品'),
+        contentField('footer.links.research', '页脚链接：研究方向'),
         contentField('footer.links.about', '页脚链接：关于'),
         contentField('footer.links.contact', '页脚链接：联系'),
         contentField('footer.links.meetup', '页脚链接：线下交流'),
@@ -914,6 +934,7 @@
   const HOME_NAV_IMAGE_KEYS = [
     { key: 'home', inputId: 'home-nav-home-image' },
     { key: 'works', inputId: 'home-nav-works-image' },
+    { key: 'research', inputId: 'home-nav-research-image' },
     { key: 'about', inputId: 'home-nav-about-image' },
     { key: 'meetup', inputId: 'home-nav-meetup-image' },
     { key: 'contact', inputId: 'home-nav-contact-image' }
@@ -1087,6 +1108,395 @@
     }
   }
 
+  // ---------- 研究方向 ----------
+  // 板块 research_sections + 条目 research_items，条目正文是富文本 HTML。
+  // 编辑器实例缓存在 researchEditors 里；重新渲染前先销毁旧的，避免重复挂载。
+  const researchEditors = {};
+  let researchLocalSeq = 0;
+
+  function researchEditorKey(section, item) {
+    return (section.id != null ? String(section.id) : 'new') + '_' + item.localKey;
+  }
+
+  function destroyResearchEditor(key) {
+    const editor = researchEditors[key];
+    if (!editor) return;
+    delete researchEditors[key];
+    const holder = editor.editor && editor.editor.parentNode;
+    if (holder && holder.parentNode) holder.innerHTML = '';
+  }
+
+  // 重新渲染前把编辑器里的未保存内容写回 state，保证增删/移动不丢输入
+  function snapshotResearchEditors() {
+    (state.research || []).forEach(function (section) {
+      (section.items || []).forEach(function (item) {
+        const editor = researchEditors[researchEditorKey(section, item)];
+        if (editor) item.body = editor.getValue();
+      });
+    });
+  }
+
+  async function loadResearch() {
+    const container = $('#research-section-list');
+    container.innerHTML = '<div class="admin-empty"><h3>加载中……</h3></div>';
+    Object.keys(researchEditors).forEach(destroyResearchEditor);
+
+    try {
+      const data = await api('/api/admin/research');
+      state.research = (data && data.sections) || [];
+      state.research.forEach(function (section) {
+        (section.items || []).forEach(function (item) {
+          item.localKey = 'l' + (++researchLocalSeq);
+        });
+      });
+      renderResearchSections();
+    } catch (e) {
+      container.innerHTML = '<div class="admin-empty"><h3>加载失败</h3><p>' + escapeHtml(e.message) + '</p></div>';
+    }
+  }
+
+  function renderResearchSections() {
+    const container = $('#research-section-list');
+    if (!state.research.length) {
+      container.innerHTML = '<div class="admin-empty"><h3>还没有板块</h3>' +
+        '<p>点击右上角「新建板块」，建议先建 Question / Method / Experiments 三个</p></div>';
+      return;
+    }
+    container.innerHTML = state.research.map(function (section, index) {
+      return researchSectionCardHtml(section, index);
+    }).join('');
+    state.research.forEach(function (section) {
+      (section.items || []).forEach(function (item) {
+        mountResearchEditor(section, item);
+      });
+    });
+    bindResearchEvents();
+  }
+
+  // 板块 / 条目里的小字段：title、subtitle、sort_order、enabled
+  function researchFieldHtml(name, value, options) {
+    options = options || {};
+    if (name === 'enabled') {
+      const selected = Number(value) === 0 ? '0' : '1';
+      return '<select class="research-input" data-field="enabled">' +
+        '<option value="1"' + (selected === '1' ? ' selected' : '') + '>启用</option>' +
+        '<option value="0"' + (selected === '0' ? ' selected' : '') + '>停用</option>' +
+      '</select>';
+    }
+    if (name === 'sort_order') {
+      return '<input type="number" class="research-input" data-field="sort_order"' +
+        ' value="' + escapeHtml(value == null ? 0 : value) + '">';
+    }
+    return '<input type="text" class="research-input" data-field="' + name + '"' +
+      (options.placeholder ? ' placeholder="' + escapeHtml(options.placeholder) + '"' : '') +
+      ' value="' + escapeHtml(value == null ? '' : value) + '">';
+  }
+
+  // 板块卡片：标题 + 标识 + 副标题 + 排序 + 状态 + 条目列表
+  function researchSectionCardHtml(section, index) {
+    const saved = section.id != null;
+    const items = section.items || [];
+
+    return '<div class="research-section-card" data-section-index="' + index + '">' +
+      '<div class="research-section-card-head">' +
+        '<div class="research-section-card-title">' +
+          '<span class="research-section-card-badge">' + (saved ? '板块 #' + section.id : '新板块') + '</span>' +
+          '<input type="text" class="research-input research-input-title" data-field="title"' +
+            ' value="' + escapeHtml(section.title) + '" placeholder="板块标题，如 Question">' +
+          '<input type="text" class="research-input research-input-slug" data-field="slug"' +
+            ' value="' + escapeHtml(section.slug) + '" placeholder="标识：question / method / experiments">' +
+        '</div>' +
+        '<div class="research-section-card-actions">' +
+          '<button type="button" class="btn btn-sm" data-act="up" title="上移">↑</button>' +
+          '<button type="button" class="btn btn-sm" data-act="down" title="下移">↓</button>' +
+          '<button type="button" class="btn btn-sm btn-danger" data-act="delete">删除板块</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="research-field-row">' +
+        '<div class="research-field research-field-wide"><label>副标题（可留空）</label>' +
+          researchFieldHtml('subtitle', section.subtitle, { placeholder: '一句话说明这个板块在讲什么' }) + '</div>' +
+        '<div class="research-field"><label>排序（越大越靠前）</label>' + researchFieldHtml('sort_order', section.sort_order) + '</div>' +
+        '<div class="research-field"><label>状态</label>' + researchFieldHtml('enabled', section.enabled) + '</div>' +
+      '</div>' +
+      '<div class="research-items">' +
+        (items.length
+          ? items.map(function (item, i) { return researchItemCardHtml(section, item, i); }).join('')
+          : '<p class="research-items-empty">这个板块还没有条目，点击下方「＋ 添加条目」</p>') +
+      '</div>' +
+      '<div class="research-section-card-foot">' +
+        '<button type="button" class="btn" data-act="add-item">＋ 添加条目</button>' +
+        '<button type="button" class="btn btn-primary" data-act="save-section">💾 保存板块</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // 条目卡片：标题 + 富文本编辑器 + 字数统计 + 排序 + 前台显示
+  function researchItemCardHtml(section, item, index) {
+    const key = researchEditorKey(section, item);
+    const enabled = Number(item.enabled) === 0 ? '0' : '1';
+
+    return '<div class="research-item-card" data-item-index="' + index + '">' +
+      '<div class="research-item-card-head">' +
+        '<input type="text" class="research-input research-input-title"' +
+          ' data-field="title" value="' + escapeHtml(item.title) + '" placeholder="条目小标题（可留空）">' +
+        '<div class="research-item-card-actions">' +
+          '<button type="button" class="btn btn-sm" data-act="item-up" title="上移">↑</button>' +
+          '<button type="button" class="btn btn-sm" data-act="item-down" title="下移">↓</button>' +
+          '<button type="button" class="btn btn-sm btn-danger" data-act="item-delete">删除条目</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="research-item-editor" data-item-key="' + escapeHtml(key) + '"></div>' +
+      '<div class="research-item-meta">' +
+        '<span class="research-item-stats" data-item-key="' + escapeHtml(key) + '">0 字 · 0 张图</span>' +
+        '<label class="research-item-meta-field"><span>排序</span>' +
+          '<input type="number" class="research-input research-input-sm" data-field="sort_order"' +
+            ' value="' + escapeHtml(item.sort_order == null ? 0 : item.sort_order) + '"></label>' +
+        '<label class="research-item-meta-field"><span>前台</span>' +
+          '<select class="research-input research-input-sm" data-field="enabled">' +
+            '<option value="1"' + (enabled === '1' ? ' selected' : '') + '>显示</option>' +
+            '<option value="0"' + (enabled === '0' ? ' selected' : '') + '>隐藏</option>' +
+          '</select></label>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function mountResearchEditor(section, item) {
+    const key = researchEditorKey(section, item);
+    const holder = document.querySelector('.research-item-editor[data-item-key="' + escapeHtml(key) + '"]');
+    if (!holder) return;
+    destroyResearchEditor(key);
+
+    const editor = window.RTE.mount(holder, {
+      value: item.body || '',
+      placeholder: '在这里写正文：选中文字后改字号 / 颜色 / 字体，用「图片」插图片，用「布局块」排两列、三列……',
+      onMessage: toast,
+      onChange: function (ed) { updateResearchStats(key, ed); }
+    });
+    researchEditors[key] = editor;
+    updateResearchStats(key, editor);
+  }
+
+  function updateResearchStats(key, editor) {
+    const stats = document.querySelector('.research-item-stats[data-item-key="' + escapeHtml(key) + '"]');
+    if (!stats) return;
+    const chars = String(editor.getPlain() || '').length;
+    const images = editor.getImageCount();
+    stats.textContent = chars + ' 字 · ' + images + ' 张图' +
+      (editor.isEmpty() ? '（空，前台不显示）' : '');
+  }
+
+  function bindResearchEvents() {
+    const container = $('#research-section-list');
+    container.onclick = function (event) {
+      const button = event.target.closest ? event.target.closest('[data-act]') : null;
+      if (!button) return;
+
+      const card = button.closest('.research-section-card');
+      const sIdx = card ? Number(card.getAttribute('data-section-index')) : -1;
+      if (!Number.isFinite(sIdx) || sIdx < 0 || !state.research[sIdx]) return;
+
+      const act = button.getAttribute('data-act');
+      const itemCard = button.closest('.research-item-card');
+      const iIdx = itemCard ? Number(itemCard.getAttribute('data-item-index')) : -1;
+
+      if (act === 'up') moveResearchSection(sIdx, -1);
+      else if (act === 'down') moveResearchSection(sIdx, 1);
+      else if (act === 'delete') deleteResearchSection(sIdx);
+      else if (act === 'add-item') addResearchItem(sIdx);
+      else if (act === 'save-section') saveResearchSection(sIdx);
+      else if (act === 'item-up') moveResearchItem(sIdx, iIdx, -1);
+      else if (act === 'item-down') moveResearchItem(sIdx, iIdx, 1);
+      else if (act === 'item-delete') deleteResearchItem(sIdx, iIdx);
+    };
+  }
+
+  function swapSort(a, b) {
+    const tmp = Number(a.sort_order) || 0;
+    a.sort_order = Number(b.sort_order) || 0;
+    b.sort_order = tmp;
+  }
+
+  function moveResearchSection(index, dir) {
+    snapshotResearchEditors();
+    const list = state.research;
+    const target = index + dir;
+    if (target < 0 || target >= list.length) return;
+    swapSort(list[index], list[target]);
+    const tmp = list[index];
+    list[index] = list[target];
+    list[target] = tmp;
+    renderResearchSections();
+  }
+
+  function moveResearchItem(sIdx, iIdx, dir) {
+    snapshotResearchEditors();
+    const items = state.research[sIdx].items;
+    const target = iIdx + dir;
+    if (!Number.isFinite(iIdx) || target < 0 || target >= items.length) return;
+    swapSort(items[iIdx], items[target]);
+    const tmp = items[iIdx];
+    items[iIdx] = items[target];
+    items[target] = tmp;
+    renderResearchSections();
+  }
+
+  function addResearchItem(sIdx) {
+    snapshotResearchEditors();
+    const section = state.research[sIdx];
+    if (!section.items) section.items = [];
+    section.items.push({
+      id: null,
+      localKey: 'l' + (++researchLocalSeq),
+      title: '',
+      body: '',
+      sort_order: 0,
+      enabled: 1
+    });
+    renderResearchSections();
+    const last = section.items[section.items.length - 1];
+    const editor = researchEditors[researchEditorKey(section, last)];
+    if (editor && editor.focus) editor.focus();
+  }
+
+  function newResearchSection() {
+    snapshotResearchEditors();
+    if (!state.research) state.research = [];
+    const usedSlugs = state.research.map(function (section) { return String(section.slug || ''); });
+    let slug = '';
+    for (let n = 1; n <= 99; n += 1) {
+      const candidate = n === 1 ? 'new-section' : 'new-section-' + n;
+      if (usedSlugs.indexOf(candidate) === -1) { slug = candidate; break; }
+    }
+    state.research.push({
+      id: null,
+      slug: slug,
+      title: '新板块',
+      subtitle: '',
+      sort_order: 0,
+      enabled: 1,
+      items: []
+    });
+    renderResearchSections();
+    toast('已新增板块，请填写标题与标识后点「保存板块」', 'info');
+  }
+
+  async function deleteResearchSection(sIdx) {
+    const section = state.research[sIdx];
+    if (!window.confirm('删除板块「' + (section.title || section.slug) + '」及其下所有条目？此操作不可撤销。')) return;
+    if (section.id == null) {
+      snapshotResearchEditors();
+      state.research.splice(sIdx, 1);
+      renderResearchSections();
+      return;
+    }
+    try {
+      await api('/api/admin/research/sections/' + section.id, { method: 'DELETE' });
+      toast('板块已删除', 'success');
+      loadResearch();
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  }
+
+  async function deleteResearchItem(sIdx, iIdx) {
+    const section = state.research[sIdx];
+    const item = section && section.items && section.items[iIdx];
+    if (!item) return;
+    if (!window.confirm('删除这个条目？此操作不可撤销。')) return;
+    if (item.id == null) {
+      snapshotResearchEditors();
+      section.items.splice(iIdx, 1);
+      renderResearchSections();
+      return;
+    }
+    try {
+      await api('/api/admin/research/items/' + item.id, { method: 'DELETE' });
+      toast('条目已删除', 'success');
+      loadResearch();
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  }
+
+  async function saveResearchSection(sIdx) {
+    const section = state.research[sIdx];
+    if (!section) return;
+    snapshotResearchEditors();
+
+    const card = document.querySelector('.research-section-card[data-section-index="' + sIdx + '"]');
+    const readField = function (name, fallback) {
+      const el = card && card.querySelector('[data-field="' + name + '"]');
+      return el ? el.value.trim() : (fallback == null ? '' : fallback);
+    };
+
+    const payload = {
+      title: readField('title'),
+      slug: readField('slug'),
+      subtitle: readField('subtitle'),
+      sort_order: readField('sort_order', '0'),
+      enabled: readField('enabled', '1')
+    };
+
+    if (!payload.title) { toast('板块标题不能为空', 'error'); return; }
+    if (!payload.slug) { toast('板块标识不能为空', 'error'); return; }
+
+    try {
+      if (section.id == null) {
+        const created = await api('/api/admin/research/sections', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        section.id = created.id;
+      } else {
+        await api('/api/admin/research/sections/' + section.id, {
+          method: 'PATCH',
+          body: JSON.stringify(payload)
+        });
+      }
+    } catch (e) {
+      toast('板块保存失败：' + e.message, 'error');
+      return;
+    }
+
+    // 条目逐个保存：新条目 POST，已有条目 PATCH
+    for (let i = 0; i < section.items.length; i += 1) {
+      const item = section.items[i];
+      const holder = document.querySelector('.research-item-card[data-item-index="' + i + '"]');
+      const pick = function (name, fallback) {
+        const el = holder && holder.querySelector('[data-field="' + name + '"]');
+        return el ? el.value.trim() : (fallback == null ? '' : fallback);
+      };
+
+      const itemPayload = {
+        section_id: section.id,
+        title: pick('title', String(item.title || '')),
+        body: item.body || '',
+        sort_order: pick('sort_order', String(item.sort_order || 0)),
+        enabled: pick('enabled', String(item.enabled == null ? 1 : item.enabled))
+      };
+
+      try {
+        if (item.id == null) {
+          const created = await api('/api/admin/research/items', {
+            method: 'POST',
+            body: JSON.stringify(itemPayload)
+          });
+          item.id = created.id;
+        } else {
+          await api('/api/admin/research/items/' + item.id, {
+            method: 'PATCH',
+            body: JSON.stringify(itemPayload)
+          });
+        }
+      } catch (e) {
+        toast('第 ' + (i + 1) + ' 个条目保存失败：' + e.message, 'error');
+      }
+    }
+
+    toast('板块已保存', 'success');
+    loadResearch();
+  }
+
   // ---------- Tab 切换 ----------
   function setupTabs() {
     $$('.admin-nav-link[data-tab]').forEach(function (link) {
@@ -1101,6 +1511,7 @@
         if (tab === 'content') loadSiteContent();
         if (tab === 'categories') loadCategories();
         if (tab === 'meetup') loadMeetups();
+        if (tab === 'research') loadResearch();
         if (tab === 'home') loadHomeConfig();
         if (tab === 'account') loadAccount();
       };
@@ -1207,6 +1618,8 @@
     $('#btn-save-home').onclick = saveHomeConfig;
     $('#btn-reset-home').onclick = loadHomeConfig;
     $('#btn-add-home-card').onclick = addHomeCard;
+    $('#btn-new-research-section').onclick = newResearchSection;
+    $('#btn-refresh-research').onclick = loadResearch;
 
     // 作品表单的分类下拉改为读后台栏目表（失败时保留 HTML 里的静态选项）
     loadCategoryOptions();

@@ -67,7 +67,8 @@ function applyChromeTexts(content) {
     const pathMap = {
       '/about': '#/about',
       '/contact': '#/contact',
-      '/meetup': '#/meetup'
+      '/meetup': '#/meetup',
+      '/research': '#/research'
     };
 
     if (!location.hash && pathMap[path]) {

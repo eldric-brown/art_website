@@ -56,11 +56,54 @@ window.Views = (function () {
     '</nav>';
   }
 
+  function pad2(value) {
+    return value < 10 ? '0' + value : String(value);
+  }
+
+  // 研究方向：单个板块（id 用于顶部目录跳转）
+  function researchSectionHtml(section, order) {
+    const slug = String(section.slug || '').trim();
+    const title = String(section.title || slug).trim();
+    const subtitle = String(section.subtitle || '').trim();
+    const items = Array.isArray(section.items) ? section.items : [];
+
+    const head = '<header class="research-section-head">' +
+        '<span class="research-section-num">' + pad2(order) + '</span>' +
+        '<h2 class="research-section-title">' + esc(title) + '</h2>' +
+        (subtitle ? '<p class="research-section-subtitle">' + esc(subtitle) + '</p>' : '') +
+      '</header>';
+
+    const itemsHtml = items.length
+      ? items.map(researchItemHtml).join('')
+      : '<p class="research-section-empty">' +
+          esc(T('research.section.noItems', 'This section is empty for now.')) +
+        '</p>';
+
+    return '<section class="research-section" id="research-' + esc(slug) + '" data-section="' + esc(slug) + '">' +
+        head +
+        '<div class="research-section-items">' + itemsHtml + '</div>' +
+      '</section>';
+  }
+
+  // 研究方向：单条富文本条目。
+  // body 由后台写入、服务端已白名单净化，渲染前再走一遍前端兜底。
+  function researchItemHtml(item) {
+    const title = String(item.title || '').trim();
+    const body = U.sanitizeRichHtml(item.body || '');
+    if (!title && !body) return '';
+
+    return '<article class="research-item reveal">' +
+      (title ? '<h3 class="research-item-title">' + esc(title) + '</h3>' : '') +
+      (body ? '<div class="research-body" data-research-body>' + body + '</div>' : '') +
+    '</article>';
+  }
+
   // 首页第二屏：主导航横向图片条（对应 artvee 的第一组 owlcontaine）。
   function navigationTilesSectionHtml(images) {
     const cards = [
       { key: 'home', href: '#/', title: T('nav.home', 'Home') },
       { key: 'works', href: '#/works', title: T('nav.works', 'Works') },
+      { key: 'research', href: '#/research', title: T('nav.research', 'Research') },
       { key: 'about', href: '#/about', title: T('nav.about', 'About') },
       { key: 'meetup', href: '#/meetup', title: T('nav.meetup', 'Meet Up') },
       { key: 'contact', href: '#/contact', title: T('nav.contact', 'Contact') }
@@ -244,6 +287,7 @@ window.Views = (function () {
       const navImages = {
         home: String(T('home.nav.home.image', homeImage) || '').trim(),
         works: String(T('home.nav.works.image', worksImage) || '').trim(),
+        research: String(T('home.nav.research.image', homeImage) || '').trim(),
         about: String(T('home.nav.about.image', (artist && artist.avatar) || homeImage) || '').trim(),
         meetup: String(T('home.nav.meetup.image', meetupImage) || '').trim(),
         contact: String(T('home.nav.contact.image', homeImage) || '').trim()
@@ -498,7 +542,7 @@ window.Views = (function () {
     // 单张作品卡：博物馆式无边框展示，图片完整居中，信息仅保留标题与年份/媒介。
     _card(art) {
       const images = art.images || [];
-      const firstImage = Array.isArray(images) && images.length ? String(images[0]) : '';
+      const cover = Array.isArray(images) && images.length ? String(images[0]) : '';
       const categoryLabel = U.getCategoryLabel(art.category);
       const meta = [
         art.year,
@@ -519,8 +563,8 @@ window.Views = (function () {
       return '<a href="#/works/' + esc(art.id) + '" class="collection-card reveal"' +
         ' data-collection-card data-search="' + esc(searchText) + '" tabindex="0">' +
         '<div class="collection-card-image">' +
-          (firstImage
-            ? '<img src="' + esc(firstImage) + '" alt="' + esc(art.title) + '" loading="lazy">'
+          (cover
+            ? '<img src="' + esc(cover) + '" alt="' + esc(art.title) + '" loading="lazy">'
             : '<span class="collection-card-placeholder" aria-hidden="true"></span>') +
         '</div>' +
         '<div class="collection-card-info">' +
@@ -589,6 +633,70 @@ window.Views = (function () {
         '</div>' +
       '</section>' +
       listHtml;
+    },
+
+    // ---------- 研究方向页 ----------
+    // 顶部标题 → 吸顶目录 → 若干板块；板块内容与布局全部由后台富文本编辑器产出。
+    research: async function () {
+      document.body.dataset.view = 'research';
+
+      const eyebrow = String(T('research.eyebrow', '') || '').trim();
+      const pageTitle = T('research.title', 'Research');
+      const subtitle = String(T('research.subtitle', '') || '').trim();
+
+      let sections = [];
+      let loadError = false;
+      try {
+        const data = await window.API.getResearch();
+        sections = (data && data.sections) || [];
+      } catch (e) {
+        console.warn('research load failed:', e);
+        loadError = true;
+      }
+
+      const hero = '<section class="research-hero">' +
+        '<div class="research-hero-inner">' +
+          (eyebrow ? '<span class="research-eyebrow">' + esc(eyebrow) + '</span>' : '') +
+          '<h1 class="research-hero-title">' + esc(pageTitle) + '</h1>' +
+          (subtitle ? '<p class="research-hero-subtitle">' + esc(subtitle) + '</p>' : '') +
+        '</div>' +
+      '</section>';
+
+      if (loadError) {
+        return '<div class="research-page">' + hero +
+          '<div class="container"><p class="research-load-error">' +
+            esc(T('research.unavailable', 'Research content could not be loaded.')) +
+          '</p></div>' +
+        '</div>';
+      }
+
+      if (!sections.length) {
+        return '<div class="research-page">' + hero +
+          Views.empty(
+            T('research.empty.title', 'Nothing published yet'),
+            T('research.empty.subtitle', 'Research notes will appear here.')
+          ) +
+        '</div>';
+      }
+
+      // 目录用 button + scrollIntoView，避免 href="#xxx" 触发 hash 路由
+      const indexHtml = '<nav class="research-index" aria-label="Research sections">' +
+        '<div class="research-index-inner">' +
+          sections.map(function (section, index) {
+            return '<button type="button" class="research-index-btn"' +
+              ' data-research-target="research-' + esc(section.slug) + '">' +
+              '<span class="research-index-num">' + pad2(index + 1) + '</span>' +
+              esc(section.title) +
+            '</button>';
+          }).join('') +
+        '</div>' +
+      '</nav>';
+
+      const sectionsHtml = sections.map(function (section, index) {
+        return researchSectionHtml(section, index + 1);
+      }).join('');
+
+      return '<div class="research-page">' + hero + indexHtml + sectionsHtml + '</div>';
     },
 
   };
